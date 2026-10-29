@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Admin Console - ศูนย์ควบคุมบูธกิจกรรมสุขภาพ</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="admin-mode">
+  <canvas id="confetti-canvas"></canvas>
+
+  <!-- Countdown Overlay -->
+  <div class="countdown-overlay" id="countdown-overlay" style="display: none;">
+    <div style="font-size: 20px; font-weight: 600; margin-bottom: 8px;">เตรียมตัวให้พร้อม!</div>
+    <div class="countdown-num" id="countdown-num">3</div>
+    <div style="font-size: 16px; opacity: 0.8; margin-top: 12px;">เกมกำลังจะเริ่มแล้ว</div>
+  </div>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand-badge">
+        <span>⚙️ BOOTH ADMIN CONSOLE</span>
+        <a href="index.html" style="color:white; text-decoration:underline; margin-left:8px; font-size:12px;">ไปยังหน้าผู้เล่น ↗</a>
+      </div>
+      <h1 class="app-title">ระบบควบคุมบูธกิจกรรมสุขภาพ</h1>
+      <p class="app-subtitle">จัดการรอบเกม สุ่มคำถาม คุมปล่อยตัว และดูรายชื่อผู้รับรางวัล</p>
+    </header>
+
+    <!-- Admin Navigation Tabs -->
+    <nav class="admin-nav">
+      <button class="admin-tab-btn active" data-tab="control">🎮 ควบคุมรอบเกม</button>
+      <button class="admin-tab-btn" data-tab="questions">📚 คลังคำถาม (<span id="admin-q-total-count">0</span>)</button>
+      <button class="admin-tab-btn" data-tab="history">📊 ประวัติ & รายงาน</button>
+    </nav>
+
+    <!-- TAB 1: CONTROL ROOM -->
+    <div id="admin-tab-control" class="admin-tab-content">
+      <div class="card" style="margin-bottom: 16px; text-align: center;">
+        <h3 style="font-family:'Kanit',sans-serif; font-size:17px; margin-bottom:4px;">📱 QR Code สำหรับพนักงานสแกนที่บูธ</h3>
+        <p style="font-size: 12px; color: var(--text-muted);">พนักงานสแกนเพื่อเข้าห้องแข่งขันเดียวกัน (สูงสุด 10 คน/รอบ)</p>
+        
+        <div class="qr-box" id="admin-qr-container"></div>
+        <div style="font-size: 11px; color:#6b7280; word-break:break-all;" id="admin-url-text"></div>
+      </div>
+
+      <div class="card" style="margin-bottom: 16px; text-align: left;">
+        <h3 style="font-family:'Kanit',sans-serif; font-size:17px; margin-bottom:10px;">🎯 เลือกเกมที่จะแข่งขันในรอบนี้</h3>
+        
+        <div class="game-select-grid">
+          <div class="game-card-select selected" data-game="quiz" onclick="selectAdminGame('quiz')">
+            <div class="game-card-icon">🧠</div>
+            <div class="game-card-name">Speed Health Quiz</div>
+            <div class="game-card-desc">สุ่ม 10 ข้อจากคลังคำถาม แข่งความไวและคะแนน</div>
+          </div>
+
+          <div class="game-card-select" data-game="tap" onclick="selectAdminGame('tap')">
+            <div class="game-card-icon">🔥</div>
+            <div class="game-card-name">Calorie Tap 30s</div>
+            <div class="game-card-desc">แตะหน้าจอรัวๆ 30 วิ เบิร์นแคลอรี่สะใจ</div>
+          </div>
+
+          <div class="game-card-select" data-game="catch" onclick="selectAdminGame('catch')">
+            <div class="game-card-icon">🧺</div>
+            <div class="game-card-name">Healthy Catch</div>
+            <div class="game-card-desc">ลากตะกร้าเก็บผักผลไม้ หลบของทอด 30 วิ</div>
+          </div>
+
+          <div class="game-card-select" data-game="swipe" onclick="selectAdminGame('swipe')">
+            <div class="game-card-icon">👆</div>
+            <div class="game-card-name">Healthy Swipe</div>
+            <div class="game-card-desc">การ์ดพฤติกรรม ปัดซ้าย/ขวา ทำคอมโบ 30 วิ</div>
+          </div>
+        </div>
+
+        <!-- Room Monitoring -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin:14px 0 8px 0;">
+          <div style="font-size:14px; font-weight:700;">ผู้เล่นที่สแกนเข้ามาแล้ว:</div>
+          <div class="player-count-pill" id="admin-player-count">0 / 10 คน</div>
+        </div>
+
+        <div style="background:#fffbeb; border:1px dashed #f59e0b; border-radius:8px; padding:8px 12px; font-size:12px; color:#92400e; margin-bottom:12px;" id="admin-rule-notice">
+          ⚡ กติกาอัตโนมัติ: มีผู้เล่น 0 คน
+        </div>
+
+        <div class="players-list" id="admin-players-list"></div>
+
+        <div style="display:grid; grid-template-columns:2fr 1fr; gap:10px; margin-top:16px;">
+          <button class="btn btn-primary" onclick="adminStartGame()">
+            <span>🚀 ปล่อยตัวเริ่มเกมพร้อมกัน</span>
+          </button>
+          <button class="btn btn-outline" onclick="adminResetRound()">
+            <span>🔄 ล้างห้อง</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: QUESTION BANK MANAGER -->
+    <div id="admin-tab-questions" class="admin-tab-content" style="display: none;">
+      <div class="card" style="text-align: left;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <div>
+            <h3 style="font-family:'Kanit',sans-serif; font-size:18px;">📚 จัดการคลังคำถามสุขภาพ</h3>
+            <p style="font-size:12px; color:#6b7280;">ระบบจะสุ่มหยิบ 10 ข้อจากคลังนี้ไปใช้ในแต่ละรอบ</p>
+          </div>
+          <button class="btn btn-primary" style="width:auto; padding:8px 14px; font-size:13px;" onclick="openAddQuestionModal()">
+            <span>➕ เพิ่มคำถาม</span>
+          </button>
+        </div>
+
+        <div style="display:flex; gap:8px; margin-bottom:14px;">
+          <button class="btn btn-outline" style="font-size:12px; padding:6px 12px;" onclick="resetDefaultQuestions()">
+            🔄 รีเซ็ตเป็นคำถามมาตรฐาน 30 ข้อ
+          </button>
+        </div>
+
+        <!-- Questions List Container -->
+        <div class="q-admin-list" id="admin-questions-list"></div>
+      </div>
+    </div>
+
+    <!-- TAB 3: HISTORY & REPORTS & GOOGLE SHEETS -->
+    <div id="admin-tab-history" class="admin-tab-content" style="display: none;">
+      <!-- Google Sheet Sync Box -->
+      <div class="card" style="margin-bottom: 16px; text-align: left; border: 1.5px solid #10b981; background: #f0fdf4;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <h3 style="font-family:'Kanit',sans-serif; font-size:16px; color:#065f46;">📊 เชื่อมต่อ Google Sheets (Auto-fill & Auto-Save)</h3>
+          <span class="player-count-pill" id="admin-emp-cache-count" style="font-size:12px;">พนักงานในระบบ: 0 คน</span>
+        </div>
+        <p style="font-size:12px; color:#15803d; margin-bottom:12px;">
+          เมื่อกรอก URL ระบบจะดึง <b>รหัสพนักงาน, ชื่อ-นามสกุล, แผนก</b> มาแสดงอัตโนมัติ และบันทึกคะแนนลง Google Sheet ให้ทันที
+        </p>
+
+        <div class="input-group" style="margin-bottom:8px;">
+          <label class="input-label" style="font-size:12px; color:#166534;">Google Apps Script Web App URL:</label>
+          <input type="text" id="admin-sheets-url" class="input-field" style="font-size:13px; padding:10px;" placeholder="https://script.google.com/macros/s/.../exec">
+        </div>
+
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-primary" style="font-size:13px; padding:8px 14px;" onclick="saveSheetsUrlAndSync()">
+            <span>💾 บันทึก & ซิงค์พนักงาน</span>
+          </button>
+          <button class="btn btn-outline" style="font-size:13px; padding:8px 14px;" onclick="loadDemoEmployees()">
+            <span>🧪 โหลดข้อมูลพนักงานตัวอย่าง</span>
+          </button>
+        </div>
+        <div id="sheets-sync-status" style="font-size:12px; margin-top:8px; font-weight:600; color:#047857;"></div>
+      </div>
+
+      <div class="card" style="text-align: left;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <div>
+            <h3 style="font-family:'Kanit',sans-serif; font-size:18px;">📊 ประวัติและรายชื่อผู้เล่น</h3>
+            <p style="font-size:12px; color:#6b7280;">บันทึกคะแนนและประวัติการรับรางวัลตลอด 2 วันจัดกิจกรรม</p>
+          </div>
+          <button class="btn btn-gold" style="width:auto; padding:8px 14px; font-size:13px;" onclick="exportHistoryCSV()">
+            <span>📥 Export Excel (CSV)</span>
+          </button>
+        </div>
+
+        <div id="admin-history-table"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD / EDIT QUESTION MODAL -->
+  <div id="question-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:9000; align-items:center; justify-content:center; padding:16px;">
+    <div class="card" style="max-width:540px; width:100%; max-height:90vh; overflow-y:auto; text-align:left;">
+      <h3 style="font-family:'Kanit',sans-serif; font-size:18px; margin-bottom:12px;" id="q-modal-title">➕ เพิ่มคำถามใหม่</h3>
+      <input type="hidden" id="q-modal-id">
+
+      <div class="input-group">
+        <label class="input-label">หมวดหมู่</label>
+        <input type="text" id="q-modal-category" class="input-field" placeholder="เช่น Office Syndrome, โภชนาการ, การนอนหลับ">
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">โจทย์คำถาม <span style="color:#ef4444;">*</span></label>
+        <textarea id="q-modal-text" class="input-field" rows="3" placeholder="พิมพ์คำถามที่ต้องการถามพนักงาน..."></textarea>
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">ตัวเลือกที่ 1 (Choice A)</label>
+        <input type="text" id="q-modal-c0" class="input-field" placeholder="ตัวเลือกที่ 1">
+      </div>
+      <div class="input-group">
+        <label class="input-label">ตัวเลือกที่ 2 (Choice B)</label>
+        <input type="text" id="q-modal-c1" class="input-field" placeholder="ตัวเลือกที่ 2">
+      </div>
+      <div class="input-group">
+        <label class="input-label">ตัวเลือกที่ 3 (Choice C)</label>
+        <input type="text" id="q-modal-c2" class="input-field" placeholder="ตัวเลือกที่ 3">
+      </div>
+      <div class="input-group">
+        <label class="input-label">ตัวเลือกที่ 4 (Choice D)</label>
+        <input type="text" id="q-modal-c3" class="input-field" placeholder="ตัวเลือกที่ 4">
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">ข้อใดคือคำตอบที่ถูกต้อง? <span style="color:#ef4444;">*</span></label>
+        <select id="q-modal-correct" class="input-field">
+          <option value="0">ตัวเลือกที่ 1 (Choice A)</option>
+          <option value="1">ตัวเลือกที่ 2 (Choice B)</option>
+          <option value="2">ตัวเลือกที่ 3 (Choice C)</option>
+          <option value="3">ตัวเลือกที่ 4 (Choice D)</option>
+        </select>
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">คำอธิบายเฉลย (แสดงหลังจากตอบ)</label>
+        <textarea id="q-modal-exp" class="input-field" rows="2" placeholder="เกร็ดความรู้สั้นๆ เสริมสุขภาพ..."></textarea>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:16px;">
+        <button class="btn btn-outline" onclick="closeQuestionModal()">ยกเลิก</button>
+        <button class="btn btn-primary" onclick="saveQuestionModal()">บันทึกข้อมูล</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="questions_default.js"></script>
+  <script src="audio_fx.js"></script>
+  <script src="qr_gen.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Health Booth Arena - บูธกิจกรรมสุขภาพ</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Confetti Canvas -->
+  <canvas id="confetti-canvas"></canvas>
+
+  <!-- Countdown Overlay -->
+  <div class="countdown-overlay" id="countdown-overlay" style="display: none;">
+    <div style="font-size: 20px; font-weight: 600; margin-bottom: 8px;">เตรียมตัวให้พร้อม!</div>
+    <div class="countdown-num" id="countdown-num">3</div>
+    <div style="font-size: 16px; opacity: 0.8; margin-top: 12px;">เกมกำลังจะเริ่มแล้ว</div>
+  </div>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand-badge">
+        <span>🏥 HEALTH BOOTH ARENA</span>
+        <button id="sound-toggle-btn" onclick="soundFX.toggle(); this.textContent = soundFX.enabled ? '🔊' : '🔇';" style="background:none; border:none; cursor:pointer; font-size:14px; margin-left:4px;" title="เปิด/ปิดเสียง">🔊</button>
+      </div>
+      <h1 class="app-title">ประลองสุขภาพพิชิตรางวัล</h1>
+      <p class="app-subtitle">สแกนร่วมสนุก แข่งขันความรู้ & ความไว รับของรางวัลติดมือกลับบ้าน!</p>
+    </header>
+
+    <!-- VIEW 1: JOIN ROOM -->
+    <main id="join-view" class="card">
+      <div style="text-align: center; margin-bottom: 16px;">
+        <span style="font-size: 40px;">🎯</span>
+        <h2 style="font-family:'Kanit', sans-serif; font-size: 20px; margin-top: 6px;">ลงทะเบียนเข้าเล่นเกม</h2>
+        <p style="font-size: 13px; color: var(--text-muted);">กรอกรหัสพนักงานเพื่อจัดอันดับและรับรางวัล</p>
+      </div>
+
+      <div class="input-group">
+        <label class="input-label" for="emp-id-input">รหัสพนักงาน (Employee ID) <span style="color:#ef4444;">*</span></label>
+        <input type="text" id="emp-id-input" class="input-field" placeholder="พิมพ์รหัสพนักงาน เช่น 6500123" autocomplete="off" required>
+        <div id="emp-lookup-status" style="font-size:12px; margin-top:4px; font-weight:600; display:none;"></div>
+      </div>
+
+      <div class="input-group">
+        <label class="input-label" for="emp-name-input">ชื่อ-นามสกุล <span style="color:#ef4444;">*</span></label>
+        <input type="text" id="emp-name-input" class="input-field" placeholder="ชื่อ-นามสกุล (ดึงอัตโนมัติ)" autocomplete="off" required>
+      </div>
+
+      <div class="input-group">
+        <label class="input-label" for="emp-dept-input">แผนก / สังกัด</label>
+        <input type="text" id="emp-dept-input" class="input-field" placeholder="แผนก (ดึงอัตโนมัติ)" autocomplete="off">
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">เลือกตัวแทนสุขภาพประจำตัว (Avatar)</label>
+        <div class="avatar-grid" id="avatar-grid"></div>
+      </div>
+
+      <button id="join-btn" class="btn btn-primary">
+        <span>เข้าสู่ห้องแข่งขัน</span>
+        <span>🚀</span>
+      </button>
+
+      <div style="margin-top: 14px; text-align: center;">
+        <a href="admin.html" style="font-size: 12px; color: #6b7280; text-decoration: none;">⚙️ สำหรับเจ้าหน้าที่บูธ (Admin)</a>
+      </div>
+    </main>
+
+    <!-- VIEW 2: LOBBY -->
+    <main id="lobby-view" class="card" style="display: none;">
+      <div class="lobby-status-banner">
+        <div>
+          <div style="font-size: 12px; color: var(--primary-dark); font-weight: 600;">สถานะห้องแข่งขัน</div>
+          <div style="font-family:'Kanit', sans-serif; font-size: 17px; font-weight: 700;">พร้อมประลองรอบนี้!</div>
+        </div>
+        <div class="player-count-pill" id="lobby-player-count">0 / 10 คน</div>
+      </div>
+
+      <div style="background:#f8fafc; border-radius:12px; padding:12px; margin-bottom:14px; text-align:left;">
+        <div style="font-size: 11px; color:#64748b; font-weight:600; text-transform:uppercase;">เกมที่แข่งขันในรอบนี้:</div>
+        <div style="font-family:'Kanit',sans-serif; font-size:15px; font-weight:700; color:#1e293b; margin-top:2px;" id="lobby-selected-game-name">
+          🧠 Speed Health Quiz (10 ข้อ)
+        </div>
+      </div>
+
+      <!-- Dynamic Prize Banner -->
+      <div class="prize-banner" id="lobby-prize-message">
+        🎁 <b>กติการอบนี้:</b> ชิงรางวัลอันดับ 1, 2 และ 3!
+      </div>
+
+      <div style="margin-top: 16px; text-align: left;">
+        <div style="font-size: 13px; font-weight: 600; color: #4b5563; margin-bottom: 8px;">ผู้เล่นในห้องแข่งขันตอนนี้:</div>
+        <div class="players-list" id="lobby-players-list"></div>
+      </div>
+
+      <div style="text-align: center; margin-top: 20px; padding: 14px; background: #f0fdf4; border-radius: 12px; border: 1px dashed #86efac;">
+        <div style="font-size: 20px; animation: pulse 1.5s infinite;">⏳</div>
+        <div style="font-family: 'Kanit', sans-serif; font-size: 15px; font-weight: 700; color: #166534; margin-top: 4px;">
+          รอเจ้าหน้าที่บูธกดเริ่มเกม...
+        </div>
+        <div style="font-size: 12px; color: #15803d;">เมื่อทุกคนพร้อมแล้ว เกมจะเริ่มอัตโนมัติพร้อมกันบนมือถือค่ะ</div>
+      </div>
+    </main>
+
+    <!-- VIEW 3: GAME ACTIVE -->
+    <main id="game-view" style="display: none;">
+      <div id="game-area"></div>
+    </main>
+
+    <!-- VIEW 4: RESULTS & CLAIM PRIZE -->
+    <main id="results-view" class="card" style="display: none;">
+      <div class="results-header">
+        <h2 style="font-family:'Kanit', sans-serif; font-size: 22px; font-weight: 800;">🏆 สรุปผลการแข่งขันรอบนี้</h2>
+        <div id="my-rank-badge" class="my-rank-badge rank-gold">🥇 อันดับที่ 1</div>
+        <div style="font-size: 18px; font-weight: 700; color: #10b981; margin-top: 4px;" id="my-score-text">1,250 คะแนน</div>
+      </div>
+
+      <!-- Prize Claim Notification Box -->
+      <div class="claim-prize-card" id="claim-prize-box">
+        <div class="claim-prize-title">🎉 ยินดีด้วยค่ะ! คุณได้รับรางวัล</div>
+        <div class="claim-prize-desc">กรุณานำหน้าจอมือถือนี้แสดงต่อเจ้าหน้าที่บูธเพื่อรับของรางวัลได้ทันที!</div>
+      </div>
+
+      <div style="text-align: left; margin: 18px 0 10px 0;">
+        <div style="font-size: 14px; font-weight: 700; color: #374151;">ตารางคะแนนประจำรอบ:</div>
+      </div>
+      <div class="leaderboard-list" id="round-leaderboard-list"></div>
+
+      <div style="margin-top: 20px;">
+        <button id="play-again-btn" class="btn btn-primary">
+          <span>กลับไปหน้าห้องรอ / เล่นรอบใหม่</span>
+          <span>🔄</span>
+        </button>
+      </div>
+    </main>
+  </div>
+
+  <!-- Scripts -->
+  <script src="questions_default.js"></script>
+  <script src="audio_fx.js"></script>
+  <script src="qr_gen.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
