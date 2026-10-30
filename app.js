@@ -149,15 +149,26 @@ const DEMO_EMPLOYEES = [
   { empId: "650010", fullName: "ปรียานุช ผักผลไม้", department: "ควบคุมคุณภาพ (QC)" }
 ];
 
+const DEFAULT_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbwS_D5RJtw8kL3ILJ5uVWfW3Fj0TKNARdD5aC-cP3Vzyi66axJRRi50Y6cGhTQVXUv1/exec';
+
 function initEmployees() {
-  state.sheetsUrl = localStorage.getItem('health_sheets_url') || '';
+  state.sheetsUrl = localStorage.getItem('health_sheets_url') || DEFAULT_SHEETS_URL;
+  localStorage.setItem('health_sheets_url', state.sheetsUrl);
+
   const saved = localStorage.getItem('health_employees_list');
   if (saved) {
-    try { state.employeesList = JSON.parse(saved); } catch(e) { state.employeesList = DEMO_EMPLOYEES; }
-  } else {
-    state.employeesList = [...DEMO_EMPLOYEES];
-    localStorage.setItem('health_employees_list', JSON.stringify(state.employeesList));
+    try { 
+      state.employeesList = JSON.parse(saved); 
+    } catch(e) { 
+      state.employeesList = []; 
+    }
   }
+
+  // If list is empty or only demo, auto-sync from Google Sheets
+  if (!state.employeesList || state.employeesList.length <= 10) {
+    syncEmployeesFromGoogleSheets(state.sheetsUrl, false);
+  }
+
   updateEmpCacheCount();
   setupEmpLookupListener();
 }
@@ -188,7 +199,7 @@ function saveSheetsUrlAndSync() {
   syncEmployeesFromGoogleSheets(url);
 }
 
-async function syncEmployeesFromGoogleSheets(url) {
+async function syncEmployeesFromGoogleSheets(url, showAlert = true) {
   const statusEl = document.getElementById('sheets-sync-status');
   if (statusEl) {
     statusEl.textContent = '⏳ กำลังเชื่อมต่อและดึงข้อมูลจาก Google Sheet...';
@@ -209,7 +220,9 @@ async function syncEmployeesFromGoogleSheets(url) {
         statusEl.textContent = `✅ สำเร็จ! ซิงค์พนักงานทั้งหมด ${data.employees.length} คนเรียบร้อยแล้ว`;
         statusEl.style.color = '#059669';
       }
-      alert(`ดึงข้อมูลพนักงานจาก Google Sheet สำเร็จแล้ว ${data.employees.length} คนค่ะ!`);
+      if (showAlert) {
+        alert(`ดึงข้อมูลพนักงานจาก Google Sheet สำเร็จแล้ว ${data.employees.length} คนค่ะ!`);
+      }
     } else {
       throw new Error(data.message || 'รูปแบบข้อมูลไม่ถูกต้อง');
     }
@@ -218,7 +231,9 @@ async function syncEmployeesFromGoogleSheets(url) {
       statusEl.textContent = `❌ เกิดข้อผิดพลาด: ${err.message}`;
       statusEl.style.color = '#dc2626';
     }
-    alert(`ไม่สามารถเชื่อมต่อ Google Sheet ได้: ${err.message}\n(กรุณาตรวจสอบว่า Deploy Web App เป็น Anyone เรียบร้อยแล้ว)`);
+    if (showAlert) {
+      alert(`ไม่สามารถเชื่อมต่อ Google Sheet ได้: ${err.message}\n(กรุณาตรวจสอบว่า Deploy Web App เป็น Anyone เรียบร้อยแล้ว)`);
+    }
   }
 }
 
