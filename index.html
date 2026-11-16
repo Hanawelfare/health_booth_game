@@ -659,6 +659,7 @@
         let lastStepTime = 0;
         let lastAccel = { x: 0, y: 0, z: 0 };
         let lastSyncedScore = 0;
+        let isCountdownRunning = false;
 
         const LANE_COLORS = [
             { bg: 'bg-emerald-500', light: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700' },
@@ -1032,16 +1033,22 @@
             // Reset scores to 0 for everyone in this heat
             racerIds.forEach(id => { activeRacers[id].score = 0; });
             raceState.status = 'countdown';
+            
+            // Start countdown locally immediately so it never gets stuck
+            runCountdownSequence();
             await pushLiveRaceState();
         };
 
         function handleRemoteRaceStateChange(prevStatus, newStatus) {
-            if (prevStatus !== 'countdown' && newStatus === 'countdown') {
+            if (prevStatus !== 'countdown' && newStatus === 'countdown' && !isCountdownRunning) {
                 runCountdownSequence();
             }
         }
 
         function runCountdownSequence() {
+            if (isCountdownRunning) return;
+            isCountdownRunning = true;
+
             // Switch mobile player screen if currently waiting
             if (currentPlayer && activeRacers[currentPlayer.id]) {
                 document.getElementById('step-waiting').classList.add('hidden');
@@ -1062,7 +1069,7 @@
             stageNum.textContent = count;
             playBeep("C5", "8n");
 
-            const cdTimer = setInterval(async () => {
+            const cdTimer = setInterval(() => {
                 count--;
                 if (count > 0) {
                     mobileNum.textContent = count;
@@ -1074,6 +1081,7 @@
                     playBeep("G5", "4n");
                 } else {
                     clearInterval(cdTimer);
+                    isCountdownRunning = false;
                     mobileOverlay.classList.add('hidden');
                     stageOverlay.classList.add('hidden');
                     beginSimultaneousRace();
