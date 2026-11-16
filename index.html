@@ -214,6 +214,9 @@
                 </span>
                 <h2 class="text-2xl font-extrabold text-slate-800">ลงทะเบียนเข้าลู่วิ่ง</h2>
                 <p class="text-xs sm:text-sm text-slate-500 mt-1">กรอกรหัสพนักงาน ตัวละครของคุณจะขึ้นไปโชว์บนจอใหญ่ทันที!</p>
+                <div id="player-db-status" class="mt-2 inline-flex items-center gap-1.5 text-[11px] bg-slate-100 text-slate-600 px-3 py-1 rounded-full font-medium">
+                    <i class="fa-solid fa-spinner fa-spin text-emerald-500"></i> กำลังซิงก์รายชื่อพนักงานจาก Google Sheets...
+                </div>
             </div>
 
             <div class="space-y-4">
@@ -651,7 +654,8 @@
         // Local Gameplay Variables
         const GAME_DURATION = 30;
         const TARGET_STEPS_FOR_FINISH = 130; // Steps needed to reach 100% of visual track
-        let googleScriptUrl = "";   // Stores deployed Google Apps Script Web App URL
+        const DEFAULT_GS_URL = "https://script.google.com/macros/s/AKfycbwS_D5RJtw8kL3ILJ5uVWfW3Fj0TKNARdD5aC-cP3Vzyi66axJRRi50Y6cGhTQVXUv1/exec";
+        let googleScriptUrl = DEFAULT_GS_URL;   // Pre-configured Google Apps Script Web App URL
         let currentScore = 0;
         let isPlaying = false;
         let gameTimerInterval = null;
@@ -676,7 +680,67 @@
         let currentUser = null;
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'health-sprint-default';
 
+        // Auto-fetch employee list from Google Apps Script on page load
+        async function fetchEmployeesFromGS(targetUrl, silent = false) {
+            const urlToUse = targetUrl || googleScriptUrl;
+            const badgeEl = document.getElementById('player-db-status');
+            if (!urlToUse) return false;
+
+            try {
+                const response = await fetch(urlToUse, { redirect: 'follow' });
+                const text = await response.text();
+                const result = JSON.parse(text);
+
+                if (result.status === "success" && result.employees) {
+                    const normalizedMap = {};
+                    Object.values(result.employees).forEach(emp => {
+                        const rawKey = String(emp.id || "").trim().toUpperCase();
+                        if (!rawKey) return;
+                        const record = {
+                            id: rawKey,
+                            name: String(emp.name || "").trim(),
+                            dept: String(emp.dept || "-").trim()
+                        };
+                        normalizedMap[rawKey] = record;
+                        // Also index without leading zeros (e.g., "00123" -> "123")
+                        const strippedKey = rawKey.replace(/^0+/, '');
+                        if (strippedKey && strippedKey !== rawKey) {
+                            normalizedMap[strippedKey] = record;
+                        }
+                    });
+
+                    employeeDB = { ...employeeDB, ...normalizedMap };
+                    const totalUnique = Object.keys(result.employees).length;
+
+                    if (badgeEl) {
+                        badgeEl.className = "mt-2 inline-flex items-center gap-1.5 text-[11px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 rounded-full font-semibold";
+                        badgeEl.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-500"></i> เชื่อมต่อฐานข้อมูลพนักงานแล้ว (${totalUnique} คน)`;
+                    }
+
+                    // Re-trigger lookup if user already typed an ID while loading
+                    const currentInputVal = document.getElementById('emp-id-input')?.value;
+                    if (currentInputVal) lookupEmployee(currentInputVal);
+
+                    renderAdminDashboard();
+                    return totalUnique;
+                } else {
+                    throw new Error(result.message || "Invalid GS response");
+                }
+            } catch (err) {
+                console.warn("Google Sheets fetch warning:", err);
+                if (badgeEl) {
+                    badgeEl.className = "mt-2 inline-flex items-center gap-1.5 text-[11px] bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1 rounded-full font-medium";
+                    badgeEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-amber-500"></i> โหมดออฟไลน์ (กรอกชื่อ-แผนกเองได้หากไม่พบรหัส)`;
+                }
+                return false;
+            }
+        }
+
         async function initFirebaseSync() {
+            // Immediately load employee data from the user's Google Apps Script URL
+            document.getElementById('gs-url-input').value = googleScriptUrl;
+            fetchEmployeesFromGS(googleScriptUrl, true);
+
             try {
                 if (typeof __firebase_config === 'undefined') return;
                 const firebaseConfig = JSON.parse(__firebase_config);
@@ -733,6 +797,16 @@
                     prizesAwarded = map;
                     renderAdminDashboard();
                 }, (err) => console.warn("Prizes sync error:", err));
+
+                // Listen to Saved Google Script URL Config across devices
+                const gsDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'gs_config');
+                onSnapshot(gsDocRef, (snap) => {
+                    if (snap.exists() && snap.data().url && snap.data().url !== googleScriptUrl) {
+                        googleScriptUrl = snap.data().url;
+                        document.getElementById('gs-url-input').value = googleScriptUrl;
+                        fetchEmployeesFromGS(googleScriptUrl, true);
+                    }
+                }, (err) => {});
 
             } catch (e) {
                 console.warn("Running in local single-device mode:", e);
@@ -857,6 +931,7 @@
 
         window.lookupEmployee = function(rawId) {
             const id = rawId.trim().toUpperCase();
+            const strippedId = id.replace(/^0+/, '');
             const infoCard = document.getElementById('emp-info-card');
             const notFoundBox = document.getElementById('emp-not-found-box');
 
@@ -868,14 +943,15 @@
                 return;
             }
 
-            if (employeeDB[id]) {
-                const emp = employeeDB[id];
-                currentPlayer = emp;
+            const matchedEmp = employeeDB[id] || (strippedId ? employeeDB[strippedId] : null);
+
+            if (matchedEmp) {
+                currentPlayer = matchedEmp;
                 
-                document.getElementById('emp-fullname').textContent = emp.name;
-                document.getElementById('emp-dept').textContent = emp.dept;
+                document.getElementById('emp-fullname').textContent = matchedEmp.name;
+                document.getElementById('emp-dept').textContent = matchedEmp.dept;
                 
-                const roundsPlayed = playLogs.filter(log => log.empId === id).length;
+                const roundsPlayed = playLogs.filter(log => log.empId === matchedEmp.id).length;
                 document.getElementById('emp-play-count-badge').textContent = `เล่นแล้ว ${roundsPlayed} รอบ`;
 
                 infoCard.classList.remove('hidden');
@@ -1660,35 +1736,27 @@
             statusEl.classList.remove('hidden');
             statusEl.textContent = "กำลังเชื่อมต่อกับ Google Sheets...";
 
-            try {
-                const response = await fetch(urlInput);
-                const result = await response.json();
+            const loadedCount = await fetchEmployeesFromGS(urlInput, false);
 
-                if (result.status === "success" && result.employees) {
-                    googleScriptUrl = urlInput;
-                    employeeDB = { ...employeeDB, ...result.employees };
-                    
-                    // Save URL to Firestore so all booth devices automatically know the GS URL
-                    if (db && currentUser) {
-                        try {
-                            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'gs_config'), { url: urlInput });
-                        } catch (e) {}
-                    }
-
-                    renderEmployeeDBList();
-                    renderAdminDashboard();
-                    statusEl.textContent = `✅ เชื่อมต่อสำเร็จ! ดึงรายชื่อพนักงานเข้าสู่ระบบแล้ว ${result.count} คน`;
-                    showToast(`ดึงข้อมูลพนักงานจาก Google Sheets สำเร็จ ${result.count} คน!`, "success");
-                } else {
-                    throw new Error(result.message || "รูปแบบข้อมูลไม่ถูกต้อง");
+            if (loadedCount !== false) {
+                googleScriptUrl = urlInput;
+                // Save URL to Firestore so all booth devices automatically know the GS URL
+                if (db && currentUser) {
+                    try {
+                        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'gs_config'), { url: urlInput });
+                    } catch (e) {}
                 }
-            } catch (err) {
+
+                renderEmployeeDBList();
+                statusEl.textContent = `✅ เชื่อมต่อสำเร็จ! ดึงรายชื่อพนักงานเข้าสู่ระบบแล้ว ${loadedCount} คน`;
+                showToast(`ดึงข้อมูลพนักงานจาก Google Sheets สำเร็จ ${loadedCount} คน!`, "success");
+            } else {
                 statusEl.textContent = "❌ ไม่สามารถดึงข้อมูลได้ กรุณาตรวจสอบว่า Deploy Web App ตั้งค่าสิทธิ์เป็น 'ทุกคน (Anyone)'";
                 showToast("เชื่อมต่อ Google Sheets ไม่สำเร็จ กรุณาเช็กสิทธิ์การ Deploy ค่ะ", "warning");
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-down"></i> ดึงข้อมูล`;
             }
+
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-down"></i> ดึงข้อมูล`;
         };
 
         // Initialize Real-time Sync on Load
