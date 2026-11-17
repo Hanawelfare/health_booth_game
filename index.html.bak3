@@ -1,0 +1,2947 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Health Sprint Live Race - เกมวิ่งแข่งออกบูธสุขภาพ</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Kanit & Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Kanit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Tone.js for sound effects -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Canvas Confetti for Celebration -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- QRCode.js (Local with CDN fallback) -->
+    <script src="./qrcode.min.js"></script>
+    <script>
+        if (typeof QRCode === 'undefined') {
+            document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>');
+        }
+    </script>
+    <!-- MQTT.js for Real-Time Cross-Device Sync (Local with CDN fallback) -->
+    <script src="./mqtt.min.js"></script>
+    <script>
+        if (typeof mqtt === 'undefined') {
+            document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.5.0/mqtt.min.js"><\/script>');
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Kanit', 'Inter', sans-serif;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        
+        @keyframes pulse-fast {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        .animate-pulse-fast {
+            animation: pulse-fast 0.4s infinite;
+        }
+
+        @keyframes run-bounce {
+            0%, 100% { transform: translateY(0) scaleX(-1); }
+            50% { transform: translateY(-8px) scaleX(-1); }
+        }
+        /* Flip runner emoji to face right (towards finish line) */
+        .runner-sprite {
+            display: inline-block;
+            transform: scaleX(-1);
+            transition: left 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .runner-active {
+            animation: run-bounce 0.22s infinite;
+        }
+
+        /* Finish line checkered pattern */
+        .finish-line {
+            background-image: 
+                linear-gradient(45deg, #1e293b 25%, transparent 25%), 
+                linear-gradient(-45deg, #1e293b 25%, transparent 25%), 
+                linear-gradient(45deg, transparent 75%, #1e293b 75%), 
+                linear-gradient(-45deg, transparent 75%, #1e293b 75%);
+            background-size: 16px 16px;
+            background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+            background-color: #ffffff;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Top Navigation Bar (Switch between Mobile Player, Big Race Screen, and Admin Dashboard) -->
+    <nav class="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 flex flex-wrap justify-between items-center gap-2">
+            <div class="flex items-center space-x-2.5">
+                <div class="bg-gradient-to-tr from-emerald-500 to-teal-400 text-white p-2 rounded-xl shadow-md">
+                    <i class="fa-solid fa-person-running text-xl"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="font-extrabold text-base sm:text-xl leading-none bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                            HEALTH SPRINT LIVE
+                        </h1>
+                        <span id="sync-badge" class="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span> Online
+                        </span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 font-medium hidden sm:block">เกมวิ่งแข่งเรียลไทม์ • บูธสุขภาพสุดมันส์</p>
+                </div>
+            </div>
+
+            <!-- 3-Mode View Switcher -->
+            <div class="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+                <button id="btn-view-player" onclick="switchView('player')" class="px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all bg-white text-emerald-600 shadow-sm flex items-center gap-1.5">
+                    <i class="fa-solid fa-mobile-screen-button"></i> <span>มือถือผู้เล่น</span>
+                </button>
+                <button id="btn-view-stage" onclick="switchView('stage')" class="px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all text-slate-600 hover:text-slate-900 flex items-center gap-1.5">
+                    <i class="fa-solid fa-tv text-rose-500"></i> <span>จอแข่งรวม (Live)</span>
+                </button>
+                <button id="btn-view-admin" onclick="switchView('admin')" class="px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all text-slate-600 hover:text-slate-900 flex items-center gap-1.5">
+                    <i class="fa-solid fa-trophy text-amber-500"></i> <span>สรุปผล & รางวัล</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Custom Notification Toast -->
+    <div id="toast-container" class="fixed top-16 left-1/2 transform -translate-x-1/2 z-50 w-11/12 max-w-md pointer-events-none transition-all duration-300 opacity-0 -translate-y-4">
+        <div class="bg-slate-800 text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-slate-700">
+            <i id="toast-icon" class="fa-solid fa-circle-info text-emerald-400 text-lg"></i>
+            <span id="toast-msg" class="text-sm font-medium">ข้อความแจ้งเตือน</span>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- VIEW 1: BIG STAGE / LIVE MULTIPLAYER RACE TRACK (จอใหญ่ประจำบูธ)      -->
+    <!-- ===================================================================== -->
+    <main id="view-stage" class="flex-1 max-w-7xl mx-auto w-full p-3 sm:p-6 hidden flex-col space-y-4">
+        
+        <!-- Stage Control Header -->
+        <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white rounded-3xl p-4 sm:p-6 shadow-xl flex flex-col lg:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-4">
+                <div class="w-14 h-14 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-3xl text-emerald-400 shrink-0">
+                    <i class="fa-solid fa-flag-checkered"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span id="stage-status-pill" class="bg-amber-500 text-slate-950 text-xs font-black px-2.5 py-0.5 rounded-full uppercase">
+                            รอผู้เล่นลงสนาม
+                        </span>
+                        <span class="text-xs text-slate-400">ผู้เข้าแข่งรอบนี้: <b id="stage-racer-count" class="text-white text-sm">0</b> คน</span>
+                        <span id="stage-network-badge" class="text-[11px] bg-slate-800 text-emerald-400 border border-slate-700 px-2.5 py-0.5 rounded-full font-mono flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> ห้อง: <span id="stage-room-text">booth-1</span>
+                        </span>
+                    </div>
+                    <h2 class="text-xl sm:text-2xl font-extrabold mt-1">สนามวิ่งท้าฟิต เรียลไทม์ (30 วินาที)</h2>
+                </div>
+            </div>
+
+            <!-- Timer & Race Controls -->
+            <div class="flex flex-wrap items-center justify-center gap-3">
+                <!-- Big Digital Timer -->
+                <div class="bg-black/40 border border-slate-700 px-5 py-2 rounded-2xl text-center min-w-[120px]">
+                    <p class="text-[10px] text-slate-400 uppercase font-bold">เวลาที่เหลือ</p>
+                    <p id="stage-timer" class="text-3xl sm:text-4xl font-black text-rose-400 font-mono">30.0</p>
+                </div>
+
+                <!-- Demo Bots Button (To test 5 players running together immediately) -->
+                <button id="btn-add-bots" onclick="addDemoRacersToLobby()" class="px-4 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-2xl text-xs font-bold transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-users-viewfinder"></i> + จำลองผู้เล่น 5 คน
+                </button>
+
+                <!-- Main Start / Reset Race Button (Admin Start) -->
+                <button id="btn-stage-start" onclick="triggerStartRace()" class="px-6 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 rounded-2xl font-black text-base shadow-lg transition transform active:scale-95 flex items-center gap-2">
+                    <span class="bg-slate-950/20 px-2 py-0.5 rounded-lg text-xs font-bold uppercase tracking-wider">แอดมิน</span>
+                    <i class="fa-solid fa-play"></i> <span>ปล่อยตัวพร้อมกัน!</span>
+                </button>
+
+                <button id="btn-stage-reset" onclick="resetCurrentRaceLobby()" class="px-4 py-3.5 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 rounded-2xl font-bold text-xs transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-rotate-left"></i> ล้างสนามรอบใหม่
+                </button>
+            </div>
+        </div>
+
+        <!-- LOBBY & QR CODE CHECK-IN SECTION (Visible during lobby) -->
+        <div id="stage-lobby-view" class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-3xl p-5 sm:p-6 shadow-xl border border-slate-700/80 transition-all">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                
+                <!-- Left: Big Prominent QR Code Card (5 cols) -->
+                <div class="lg:col-span-5 bg-white text-slate-800 rounded-2xl p-5 shadow-2xl border-4 border-emerald-400 flex flex-col items-center text-center relative overflow-hidden">
+                    <div class="bg-emerald-500 text-white font-extrabold text-xs px-3.5 py-1 rounded-full uppercase tracking-wider mb-2 flex items-center justify-between w-full shadow-sm">
+                        <span class="flex items-center gap-1.5"><i class="fa-solid fa-qrcode"></i> สแกนเข้าแข่งรอบนี้</span>
+                        <span class="bg-slate-900/30 px-2 py-0.5 rounded text-[10px] font-mono font-bold">ห้อง: <span id="stage-room-badge">booth-1</span></span>
+                    </div>
+                    <h3 class="text-lg font-black text-slate-900 leading-tight">
+                        เปิดกล้องมือถือ > สแกน QR Code
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-1 mb-3">
+                        กรอกรหัสพนักงาน แล้วชื่อคุณจะขึ้นบนจอใหญ่ทันที!
+                    </p>
+
+                    <!-- QR Code Render Box -->
+                    <div id="stage-qrcode-box" class="bg-white p-3 rounded-xl border border-slate-200 shadow-inner flex items-center justify-center min-w-[200px] min-h-[200px]">
+                        <!-- Dynamic QR Canvas / Img -->
+                    </div>
+
+                    <!-- URL Info & Admin Config Button -->
+                    <div class="w-full mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between gap-1 text-[11px] text-slate-500">
+                        <span id="stage-qr-url-display" class="font-mono truncate max-w-[200px] text-left">...</span>
+                        <div class="flex items-center gap-1 shrink-0">
+                            <button type="button" onclick="copyJoinUrl()" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-slate-700 font-bold transition" title="คัดลอกลิงก์">
+                                <i class="fa-solid fa-copy"></i>
+                            </button>
+                            <button type="button" onclick="openQrUrlModal()" class="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded font-bold transition flex items-center gap-1" title="แก้ไข URL">
+                                <i class="fa-solid fa-pen"></i> แก้ไข
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Live Joined Racers at the Starting Line (7 cols) -->
+                <div class="lg:col-span-7 flex flex-col justify-between h-full space-y-3">
+                    <div>
+                        <div class="flex items-center justify-between pb-2 border-b border-slate-700/80">
+                            <div class="flex items-center gap-2">
+                                <span class="w-3 h-3 rounded-full bg-emerald-400 animate-ping"></span>
+                                <h4 class="font-extrabold text-base sm:text-lg text-white">
+                                    ผู้เล่นที่ลงสนามแล้วรอบนี้: <span id="stage-lobby-racer-count-badge" class="text-emerald-400 font-black">0</span> คน
+                                </h4>
+                            </div>
+                            <span class="text-xs text-slate-400 hidden sm:inline">รอกรรมการปล่อยตัวพร้อมกัน</span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1">
+                            พนักงานที่สแกน QR Code แล้วเลือกตัวละครจะปรากฏที่นี่แบบเรียลไทม์
+                        </p>
+                    </div>
+
+                    <!-- Live Racers Grid -->
+                    <div id="stage-lobby-racers-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 min-h-[140px] max-h-[220px] overflow-y-auto pr-1">
+                        <!-- Populated via JS -->
+                    </div>
+
+                    <!-- Instructions / Admin Tip Banner -->
+                    <div class="bg-black/30 border border-slate-700/60 rounded-xl p-3 flex items-center justify-between text-xs">
+                        <div class="flex items-center gap-2 text-slate-300">
+                            <i class="fa-solid fa-circle-info text-amber-400"></i>
+                            <span>เมื่อผู้เล่นพร้อมแล้ว แอดมินกด <b>"ปล่อยตัวพร้อมกัน!"</b> ด้านบนเพื่อเริ่มเกม</span>
+                        </div>
+                        <span class="text-emerald-400 font-bold hidden sm:inline">⚡ วิ่ง 30 วินาที</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- LIVE MULTI-LANE RACE TRACK (Shows all active racers side-by-side) -->
+        <div id="stage-race-container" class="flex-1 bg-white rounded-3xl shadow-xl border border-slate-200 p-4 sm:p-6 relative overflow-hidden flex flex-col justify-between min-h-[420px]">
+            
+            <!-- Countdown Overlay on Big Screen -->
+            <div id="stage-countdown-overlay" class="absolute inset-0 bg-slate-900/90 backdrop-blur-sm z-30 flex flex-col items-center justify-center text-white hidden">
+                <p class="text-emerald-400 font-bold tracking-widest uppercase text-lg mb-2">ผู้เข้าแข่งขันทุกคน เตรียมตัว!</p>
+                <div id="stage-countdown-num" class="text-9xl font-black text-white animate-bounce">3</div>
+                <p class="text-slate-300 text-sm mt-4">ซอยเท้าให้ไวที่สุดเพื่อแซงเข้าเส้นชัย!</p>
+            </div>
+
+            <!-- Heat Winners & Prizes Overlay on Big Screen -->
+            <div id="stage-winner-overlay" class="absolute inset-0 bg-slate-950/95 backdrop-blur-md z-30 flex flex-col justify-between p-4 sm:p-8 text-white hidden overflow-y-auto">
+                <div class="text-center max-w-3xl mx-auto w-full">
+                    <span class="inline-flex items-center gap-2 bg-amber-500/20 text-amber-300 border border-amber-500/40 px-4 py-1.5 rounded-full text-xs sm:text-sm font-extrabold uppercase tracking-wider mb-2">
+                        <i class="fa-solid fa-trophy text-amber-400"></i> สรุปผลการแข่งขันรอบนี้ (Heat Results)
+                    </span>
+                    <h2 class="text-2xl sm:text-4xl font-black bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400 bg-clip-text text-transparent">
+                        🎉 ทำเนียบผู้ชนะประจำรอบ & รับของรางวัล
+                    </h2>
+                    <p class="text-xs sm:text-sm text-slate-400 mt-1">แอดมินมอบรางวัลให้ Top 3 ของรอบนี้ได้ทันที จากนั้นกดปุ่มเริ่มรอบใหม่สำหรับกลุ่มถัดไป</p>
+                </div>
+
+                <!-- Top 1, 2, 3 Heat Podium Cards -->
+                <div id="stage-heat-podium-grid" class="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto w-full my-4">
+                    <!-- Rendered via JS -->
+                </div>
+
+                <!-- Remaining racers list if >3 players -->
+                <div id="stage-heat-others-list" class="max-w-3xl mx-auto w-full hidden">
+                    <!-- Mini table for rank 4+ -->
+                </div>
+
+                <!-- Admin Action Button: Next Heat & Reset -->
+                <div class="text-center pt-2 pb-2">
+                    <button onclick="nextHeatAndReset()" id="btn-next-heat" 
+                        class="px-8 sm:px-12 py-4 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 rounded-2xl font-black text-base sm:text-xl shadow-2xl shadow-emerald-500/30 transition transform active:scale-95 inline-flex items-center gap-3 cursor-pointer">
+                        <i class="fa-solid fa-rotate-right text-xl"></i>
+                        <span>เริ่มเกมสำหรับกลุ่มถัดไป (Next Heat)</span>
+                    </button>
+                    <p class="text-[11px] text-slate-400 mt-2">
+                        * เมื่อกดปุ่มนี้ จอใหญ่จะสลับกลับมาแสดง QR Code เพื่อเปิดรับพนักงานกลุ่มถัดไปทันที
+                    </p>
+                </div>
+            </div>
+
+            <!-- Track Header Markers -->
+            <div class="flex justify-between items-center text-xs font-bold text-slate-400 pb-2 border-b border-slate-200 px-2">
+                <span>🚩 จุดเริ่มต้น (START)</span>
+                <span class="hidden sm:inline text-emerald-600">ยิ่งซอยเท้าเร็ว ตัวละครยิ่งพุ่งไปข้างหน้า!</span>
+                <span class="text-slate-800">🏁 เส้นชัย (FINISH)</span>
+            </div>
+
+            <!-- Lanes Container (Dynamically renders 1 lane per participant in current race) -->
+            <div id="race-lanes-container" class="flex-1 flex flex-col justify-center space-y-3 my-3 relative">
+                <!-- Empty State -->
+                <div class="text-center py-16 text-slate-400">
+                    <i class="fa-solid fa-person-running text-5xl mb-3 text-slate-300"></i>
+                    <p class="text-lg font-bold text-slate-600">ยังไม่มีผู้เล่นลงสนามในรอบนี้</p>
+                    <p class="text-xs mt-1">ให้ผู้เล่นใช้มือถือกรอกรหัสพนักงานในแท็บ <b>"มือถือผู้เล่น"</b> หรือกดปุ่ม <b>"+ จำลองผู้เล่น 5 คน"</b> ด้านบนเพื่อทดสอบ</p>
+                </div>
+            </div>
+
+            <!-- Bottom Legend / Live Top 3 Banner -->
+            <div class="bg-slate-50 rounded-2xl p-3 border border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+                <div class="flex items-center gap-2 text-slate-600">
+                    <i class="fa-solid fa-circle-info text-emerald-500"></i>
+                    <span>ทุกคนที่ลงสนามในรอบนี้จะเห็นตัวละครของตัวเองวิ่งแข่งกันบนหน้าจอนี้แบบสดๆ</span>
+                </div>
+                <div class="font-bold text-amber-600">
+                    🏆 รางวัลใหญ่สงวนสิทธิ์ให้ Top 3 คะแนนสูงสุดของงาน!
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ===================================================================== -->
+    <!-- VIEW 2: PLAYER MOBILE INTERFACE (หน้าจอบนมือถือของผู้เข้าเล่น)        -->
+    <!-- ===================================================================== -->
+    <main id="view-player" class="flex-1 flex flex-col items-center justify-center p-4 max-w-lg mx-auto w-full">
+        
+        <!-- STEP 1: Employee Check-in Card -->
+        <div id="step-checkin" class="w-full bg-white rounded-3xl shadow-xl border border-slate-100 p-6 sm:p-7 transition-all">
+            <div class="text-center mb-5">
+                <span class="inline-block bg-emerald-100 text-emerald-700 text-xs font-bold px-3 py-1 rounded-full mb-2">
+                    🏃‍♂️ ศึกวิ่งท้าฟิต ชิง Top 3 ประจำบูธ!
+                </span>
+                <h2 class="text-2xl font-extrabold text-slate-800">ลงทะเบียนเข้าลู่วิ่ง</h2>
+                <p class="text-xs sm:text-sm text-slate-500 mt-1">กรอกรหัสพนักงาน ตัวละครของคุณจะขึ้นไปโชว์บนจอใหญ่ทันที!</p>
+                <div id="player-db-status" class="mt-2 inline-flex items-center gap-1.5 text-[11px] bg-slate-100 text-slate-600 px-3 py-1 rounded-full font-medium">
+                    <i class="fa-solid fa-spinner fa-spin text-emerald-500"></i> กำลังซิงก์รายชื่อพนักงานจาก Google Sheets...
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                        รหัสพนักงาน (Employee ID) <span class="text-rose-500">*</span>
+                    </label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-400">
+                            <i class="fa-solid fa-id-badge text-lg"></i>
+                        </span>
+                        <input type="text" id="emp-id-input" placeholder="เช่น 1001, 1002, 1003..." 
+                            oninput="lookupEmployee(this.value)"
+                            class="w-full pl-11 pr-4 py-3.5 bg-slate-50 border-2 border-slate-200 rounded-2xl text-lg font-bold text-slate-800 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all uppercase">
+                    </div>
+                    <!-- Quick Demo Pills -->
+                    <div class="mt-2 flex flex-wrap items-center gap-1.5">
+                        <span class="text-[11px] text-slate-400">รหัสทดสอบ:</span>
+                        <button type="button" onclick="fillDemoId('1001')" class="text-[11px] bg-slate-100 hover:bg-emerald-100 text-slate-600 hover:text-emerald-700 px-2 py-0.5 rounded-md font-medium transition">1001</button>
+                        <button type="button" onclick="fillDemoId('1002')" class="text-[11px] bg-slate-100 hover:bg-emerald-100 text-slate-600 hover:text-emerald-700 px-2 py-0.5 rounded-md font-medium transition">1002</button>
+                        <button type="button" onclick="fillDemoId('1003')" class="text-[11px] bg-slate-100 hover:bg-emerald-100 text-slate-600 hover:text-emerald-700 px-2 py-0.5 rounded-md font-medium transition">1003</button>
+                        <button type="button" onclick="fillDemoId('1004')" class="text-[11px] bg-slate-100 hover:bg-emerald-100 text-slate-600 hover:text-emerald-700 px-2 py-0.5 rounded-md font-medium transition">1004</button>
+                        <button type="button" onclick="fillDemoId('1005')" class="text-[11px] bg-slate-100 hover:bg-emerald-100 text-slate-600 hover:text-emerald-700 px-2 py-0.5 rounded-md font-medium transition">1005</button>
+                    </div>
+                </div>
+
+                <!-- Auto-populated Employee Details Box -->
+                <div id="emp-info-card" class="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-4 transition-all hidden">
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-11 h-11 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+                                <i class="fa-solid fa-user-check"></i>
+                            </div>
+                            <div>
+                                <p class="text-[11px] text-emerald-600 font-semibold">พบข้อมูลพนักงาน (Auto-Fill)</p>
+                                <h3 id="emp-fullname" class="text-base font-bold text-slate-800">-</h3>
+                                <p class="text-xs text-slate-600 flex items-center gap-1 mt-0.5">
+                                    <i class="fa-solid fa-building text-emerald-500"></i> แผนก: <span id="emp-dept" class="font-semibold">-</span>
+                                </p>
+                            </div>
+                        </div>
+                        <span id="emp-play-count-badge" class="bg-white text-emerald-700 text-[11px] font-bold px-2.5 py-1 rounded-full shadow-sm border border-emerald-100">
+                            เล่นแล้ว 0 รอบ
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Fallback Manual Entry if ID not in database -->
+                <div id="emp-not-found-box" class="bg-amber-50 border border-amber-200 rounded-2xl p-4 hidden space-y-2.5">
+                    <div class="flex items-center gap-2 text-amber-700 text-xs font-semibold">
+                        <i class="fa-solid fa-circle-exclamation"></i>
+                        <span>ไม่พบรหัสนี้ในระบบ กรุณากรอกชื่อและแผนกเพิ่มเติม</span>
+                    </div>
+                    <input type="text" id="new-emp-name" placeholder="ชื่อ - นามสกุล" class="w-full px-3.5 py-2.5 bg-white border border-amber-300 rounded-xl text-sm focus:outline-none focus:border-emerald-500">
+                    <input type="text" id="new-emp-dept" placeholder="แผนก / ฝ่าย (เช่น HR, IT, ผลิต)" class="w-full px-3.5 py-2.5 bg-white border border-amber-300 rounded-xl text-sm focus:outline-none focus:border-emerald-500">
+                </div>
+
+                <!-- Choose Runner Avatar -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1.5">เลือกตัวละครนักวิ่งของคุณ:</label>
+                    <div class="grid grid-cols-5 gap-2" id="avatar-selector">
+                        <button type="button" onclick="selectAvatar('🏃‍♂️', this)" class="avatar-opt py-2 text-2xl bg-emerald-100 border-2 border-emerald-500 rounded-xl transition">🏃‍♂️</button>
+                        <button type="button" onclick="selectAvatar('🏃‍♀️', this)" class="avatar-opt py-2 text-2xl bg-slate-50 border-2 border-slate-200 rounded-xl transition">🏃‍♀️</button>
+                        <button type="button" onclick="selectAvatar('🦸‍♂️', this)" class="avatar-opt py-2 text-2xl bg-slate-50 border-2 border-slate-200 rounded-xl transition">🦸‍♂️</button>
+                        <button type="button" onclick="selectAvatar('🐆', this)" class="avatar-opt py-2 text-2xl bg-slate-50 border-2 border-slate-200 rounded-xl transition">🐆</button>
+                        <button type="button" onclick="selectAvatar('🚀', this)" class="avatar-opt py-2 text-2xl bg-slate-50 border-2 border-slate-200 rounded-xl transition">🚀</button>
+                    </div>
+                </div>
+
+                <!-- Join Race Button -->
+                <button id="btn-start-game" onclick="joinRaceLobby()" disabled
+                    class="w-full py-4 rounded-2xl font-extrabold text-lg text-white shadow-lg transition-all flex items-center justify-center gap-2 bg-slate-300 cursor-not-allowed">
+                    <i class="fa-solid fa-flag-checkered text-xl"></i>
+                    <span>กรอกรหัสพนักงานเพื่อลงสนาม</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- STEP 1.5: Waiting Room (On the starting line, watching others join) -->
+        <div id="step-waiting" class="w-full bg-white rounded-3xl shadow-xl border border-slate-100 p-6 text-center hidden">
+            <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-3 animate-bounce">
+                <span id="waiting-my-avatar">🏃‍♂️</span>
+            </div>
+            <span class="bg-amber-100 text-amber-800 text-xs font-bold px-3 py-1 rounded-full">
+                ประจำจุดสตาร์ทแล้ว! มองดูตัวคุณบนจอใหญ่ได้เลย
+            </span>
+            <h3 id="waiting-my-name" class="text-xl font-extrabold text-slate-800 mt-2">ชื่อพนักงาน</h3>
+            <p class="text-xs text-slate-500 mt-1">ห้อง: <b id="waiting-room-badge" class="font-mono text-emerald-600 font-bold">booth-1</b> • ผู้ร่วมแข่งในรอบนี้ (<span id="waiting-total-racers" class="font-bold text-emerald-600">1</span> คน):</p>
+
+            <!-- Live list of racers in this heat -->
+            <div id="waiting-racers-list" class="my-4 bg-slate-50 rounded-2xl p-3 border border-slate-200 max-h-40 overflow-y-auto space-y-1.5 text-left">
+                <!-- Populated dynamically -->
+            </div>
+
+            <div class="space-y-3">
+                <!-- 1. Normal State: Locked by default waiting for Admin release -->
+                <div id="waiting-locked-box" class="bg-gradient-to-b from-amber-50 to-orange-50 border-2 border-amber-200 rounded-2xl p-4 text-center shadow-sm">
+                    <div class="flex items-center justify-center gap-2 text-amber-800 font-extrabold text-sm mb-1.5">
+                        <i class="fa-solid fa-lock text-amber-600"></i>
+                        <span>รอแอดมินกดปล่อยตัวจากจอหลัก</span>
+                    </div>
+                    <p class="text-xs text-amber-900/80 leading-relaxed">
+                        ระบบล็อกปุ่มเริ่มไว้ เพื่อให้ทุกคนปล่อยตัวพร้อมกันอย่างยุติธรรม<br>
+                        กรุณารอฟังสัญญาณปล่อยตัวจากเจ้าหน้าที่ประจำบูธนะคะ 🚩
+                    </p>
+                    <div class="mt-3 inline-flex items-center gap-2 bg-white/90 border border-amber-300 px-3.5 py-1.5 rounded-full text-xs font-bold text-amber-800 shadow-sm">
+                        <span class="relative flex h-2.5 w-2.5">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+                        </span>
+                        <span>รอกรรมการสั่งเริ่มเกม...</span>
+                    </div>
+                </div>
+
+                <!-- 2. Admin Started Banner & Self-Start Action (When Admin clicked start or countdown begins) -->
+                <div id="waiting-admin-started-box" class="hidden space-y-2">
+                    <div class="bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-3.5 text-center shadow-sm">
+                        <div class="flex items-center justify-center gap-2 text-emerald-800 font-extrabold text-base mb-1">
+                            <i class="fa-solid fa-flag-checkered text-emerald-600 text-xl animate-bounce"></i>
+                            <span>แอดมินกดปล่อยตัวแล้ว!</span>
+                        </div>
+                        <p class="text-xs text-emerald-700 font-medium">
+                            กำลังเริ่มการแข่งขัน แตะปุ่มด้านล่างเพื่อเปิดระบบตรวจจับการวิ่งทันที
+                        </p>
+                    </div>
+                    <button type="button" id="btn-player-start-now" onclick="playerSelfStartRace()"
+                        class="w-full py-4 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-500 hover:from-emerald-400 hover:to-teal-400 text-white rounded-2xl font-black text-lg shadow-xl animate-pulse-fast flex items-center justify-center gap-2 active:scale-95 transition cursor-pointer">
+                        <i class="fa-solid fa-bolt text-amber-300 text-xl"></i>
+                        <span>แตะเพื่อเริ่มวิ่งทันที!</span>
+                    </button>
+                </div>
+
+                <!-- 3. Fallback Section if Admin started but device lagged or didn't receive sync -->
+                <div id="waiting-fallback-box" class="pt-2 border-t border-slate-100 text-center">
+                    <p class="text-[11px] text-slate-400 mb-1.5 flex items-center justify-center gap-1">
+                        <i class="fa-solid fa-circle-question text-amber-500"></i>
+                        <span>หากแอดมินกดเริ่มบนจอใหญ่แล้ว แต่เครื่องคุณยังไม่ขยับ:</span>
+                    </p>
+                    <button type="button" onclick="confirmManualFallbackStart()" id="btn-manual-fallback"
+                        class="w-full py-2.5 px-3 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 hover:border-amber-400 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 active:scale-95">
+                        <i class="fa-solid fa-play text-amber-600"></i>
+                        <span>กดเริ่มเอง (แอดมินสั่งปล่อยตัวแล้ว)</span>
+                    </button>
+                </div>
+
+                <!-- Cancel Button -->
+                <button type="button" onclick="leaveLobby()" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition">
+                    ยกเลิก / เปลี่ยนรหัสพนักงาน
+                </button>
+            </div>
+        </div>
+
+        <!-- STEP 2: Active Gameplay Screen (Mobile Controller + Mini Live Race View) -->
+        <div id="step-playing" class="w-full bg-white rounded-3xl shadow-2xl border border-slate-100 p-5 text-center hidden relative overflow-hidden">
+            <!-- Countdown Overlay -->
+            <div id="countdown-overlay" onclick="initAudio()" class="absolute inset-0 bg-slate-900/90 backdrop-blur-sm z-30 flex flex-col items-center justify-center text-white hidden cursor-pointer">
+                <p class="text-emerald-400 font-bold tracking-widest uppercase text-sm mb-2">เตรียมซอยเท้าให้ไว!</p>
+                <div id="countdown-number" class="text-8xl font-black text-white animate-bounce">3</div>
+                <p class="text-slate-300 text-xs mt-4">กำมือถือให้แน่น วิ่งแข่งกับเพื่อนบนจอ!</p>
+            </div>
+
+            <!-- Top Timer & My Rank -->
+            <div class="flex justify-between items-center bg-slate-900 text-white px-4 py-2.5 rounded-2xl mb-3">
+                <div class="text-left">
+                    <p class="text-[10px] text-slate-400">อันดับสดรอบนี้</p>
+                    <p id="mobile-live-rank" class="font-black text-lg text-amber-400">ที่ #1</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-[10px] text-slate-400">ก้าววิ่งของคุณ</p>
+                    <p id="game-score" class="font-black text-3xl text-emerald-400 leading-none">0</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-[10px] text-slate-400">เวลา</p>
+                    <p class="font-black text-lg text-rose-400 font-mono"><span id="game-timer">30.0</span>s</p>
+                </div>
+            </div>
+
+            <!-- Mini Live Race Track on Mobile (Shows all 5 racers competing!) -->
+            <div class="bg-slate-50 rounded-2xl p-3 border border-slate-200 mb-3 text-left">
+                <div class="flex justify-between items-center text-[10px] font-bold text-slate-400 mb-1.5">
+                    <span>🏁 ตำแหน่งผู้เข้าแข่งทุกคนแบบเรียลไทม์</span>
+                    <span>เส้นชัย</span>
+                </div>
+                <div id="mobile-mini-lanes" class="space-y-2 max-h-40 overflow-y-auto pr-1">
+                    <!-- Dynamic mini progress bars for every player in the race -->
+                </div>
+            </div>
+
+            <!-- Big Tap / Shake Pad -->
+            <button id="btn-tap-boost" onpointerdown="registerStep(true)"
+                class="w-full py-6 bg-gradient-to-r from-emerald-500 to-teal-500 active:from-emerald-600 active:to-teal-600 text-white rounded-2xl font-extrabold text-xl shadow-lg active:scale-95 transition-transform flex flex-col items-center justify-center">
+                <span><i class="fa-solid fa-shoe-prints mr-1"></i> วิ่งซอยเท้า / แตะรัวๆ!</span>
+                <span class="text-[11px] font-normal text-emerald-100 mt-0.5">(เขย่ามือถือตามจังหวะวิ่ง หรือกดปุ่มนี้รัวๆ เพื่อแซง!)</span>
+            </button>
+        </div>
+
+        <!-- STEP 3: Result & Ranking Screen -->
+        <div id="step-result" class="w-full bg-white rounded-3xl shadow-xl border border-slate-100 p-6 text-center hidden">
+            <div class="w-16 h-16 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center text-3xl mx-auto mb-2 shadow-inner">
+                <i class="fa-solid fa-trophy"></i>
+            </div>
+            
+            <span id="result-heat-badge" class="bg-emerald-100 text-emerald-700 text-xs font-bold px-3 py-1 rounded-full">
+                เข้าเส้นชัยอันดับที่ #1 ของรอบนี้!
+            </span>
+            <h2 id="result-player-name" class="text-xl font-bold text-slate-800 mt-2">ชื่อพนักงาน</h2>
+            <p id="result-player-dept" class="text-xs text-slate-500">แผนก</p>
+
+            <!-- Score Card -->
+            <div class="bg-gradient-to-br from-slate-800 to-slate-900 text-white rounded-2xl p-4 my-4 shadow-lg">
+                <p class="text-[11px] text-slate-400 uppercase tracking-wider">คะแนนรอบนี้ของคุณ</p>
+                <div id="result-score" class="text-5xl font-black text-emerald-400 my-1">0</div>
+                <div class="flex justify-center gap-4 text-xs text-slate-300 mt-2 pt-2 border-t border-slate-700/80">
+                    <span>🔥 เผาผลาญ <b id="result-kcal" class="text-orange-400">0</b> kcal</span>
+                    <span>🔄 เล่นสะสม <b id="result-rounds" class="text-sky-400">1</b> รอบ</span>
+                </div>
+            </div>
+
+            <!-- Overall Top 3 Status -->
+            <div id="result-rank-banner" class="bg-amber-50 border border-amber-200 rounded-2xl p-3 mb-4">
+                <p id="result-rank-text" class="text-xs sm:text-sm font-bold text-amber-800">
+                    อันดับรวมทั้งงานของคุณ: #1
+                </p>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="grid grid-cols-2 gap-2.5">
+                <button onclick="playAgainSameUser()" class="py-3.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold text-xs sm:text-sm shadow-md transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-rotate-right"></i> ลงแข่งรอบถัดไป
+                </button>
+                <button onclick="resetToNewPlayer()" class="py-3.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-user-plus"></i> เปลี่ยนผู้เล่น
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- ===================================================================== -->
+    <!-- VIEW 3: ADMIN DASHBOARD, LEADERBOARD & REWARDS MANAGEMENT             -->
+    <!-- ===================================================================== -->
+    <main id="view-admin" class="flex-1 max-w-6xl mx-auto w-full p-4 sm:p-6 hidden space-y-6">
+        
+        <!-- Header & Export Controls -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-3xl shadow-sm border border-slate-200">
+            <div>
+                <h2 class="text-xl sm:text-2xl font-extrabold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-line text-emerald-500"></i> แดชบอร์ดสรุปผลบูธสุขภาพ & รางวัล
+                </h2>
+                <p class="text-xs sm:text-sm text-slate-500 mt-0.5">ติดตามยอดผู้เข้าร่วม จำนวนรอบการเล่น Top 3 และจัดการการแจกรางวัล</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <button onclick="openEmployeeModal()" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-users-gear"></i> จัดการฐานข้อมูลพนักงาน (<span id="db-count">0</span>)
+                </button>
+                <button onclick="exportToCSV()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-excel"></i> ดาวน์โหลดรายงาน (CSV)
+                </button>
+            </div>
+        </div>
+
+        <!-- Admin Live Race Control Banner (Directly Start / Reset from Admin Dashboard) -->
+        <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white p-4 sm:p-5 rounded-3xl shadow-lg border border-slate-700 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3.5">
+                <div class="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-400 text-2xl shrink-0">
+                    <i class="fa-solid fa-tower-broadcast"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold text-slate-400">สถานะสนามวิ่งสด:</span>
+                        <span id="admin-race-status-pill" class="bg-amber-500 text-slate-950 text-[11px] font-black px-2.5 py-0.5 rounded-full uppercase">
+                            รอผู้เล่นลงสนาม
+                        </span>
+                        <span class="text-xs text-slate-400">ผู้เข้าแข่งรอบนี้: <b id="admin-racer-count" class="text-emerald-400 text-sm font-bold">0</b> คน</span>
+                        <span class="text-[11px] bg-slate-800 text-emerald-400 border border-slate-700 px-2 py-0.5 rounded-full font-mono">ห้อง: <b id="admin-room-text">booth-1</b></span>
+                    </div>
+                    <p class="text-xs text-slate-300 mt-1">แอดมินเป็นผู้ควบคุมการกดปล่อยตัว ผู้เล่นจะไม่สามารถกดเริ่มเองก่อนได้</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2.5 shrink-0">
+                <button onclick="triggerStartRace()" class="px-5 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 rounded-2xl font-black text-sm shadow-lg transition transform active:scale-95 flex items-center gap-2">
+                    <i class="fa-solid fa-play"></i> <span>ปล่อยตัวพร้อมกัน (Admin Start)</span>
+                </button>
+                <button onclick="resetCurrentRaceLobby()" class="px-4 py-3 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 rounded-2xl font-bold text-xs transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-rotate-left"></i> ล้างรอบใหม่
+                </button>
+            </div>
+        </div>
+
+        <!-- KPI Summary Cards -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div class="bg-white p-4 sm:p-5 rounded-3xl shadow-sm border border-slate-200 flex items-center gap-3.5">
+                <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl shrink-0">
+                    <i class="fa-solid fa-users"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-slate-500">ผู้เข้าร่วมบูธ (คน)</p>
+                    <p id="stat-unique-players" class="text-2xl sm:text-3xl font-black text-slate-800">0</p>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 sm:p-5 rounded-3xl shadow-sm border border-slate-200 flex items-center gap-3.5">
+                <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl shrink-0">
+                    <i class="fa-solid fa-person-running"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-slate-500">จำนวนรอบเล่นรวม</p>
+                    <p id="stat-total-rounds" class="text-2xl sm:text-3xl font-black text-slate-800">0</p>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 sm:p-5 rounded-3xl shadow-sm border border-slate-200 flex items-center gap-3.5">
+                <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center text-xl shrink-0">
+                    <i class="fa-solid fa-trophy"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-slate-500">โควต้ารางวัลใหญ่</p>
+                    <p class="text-2xl sm:text-3xl font-black text-slate-800">3 <span class="text-xs font-normal text-slate-400">อันดับ</span></p>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 sm:p-5 rounded-3xl shadow-sm border border-slate-200 flex items-center gap-3.5">
+                <div class="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center text-xl shrink-0">
+                    <i class="fa-solid fa-gift"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-slate-500">แจกรางวัลไปแล้ว</p>
+                    <p id="stat-prizes-given" class="text-2xl sm:text-3xl font-black text-slate-800">0 <span class="text-xs font-normal text-slate-400">/ 3</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- TOP 3 PODIUM & PRIZE ASSIGNMENT SECTION -->
+        <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-3xl p-5 sm:p-7 text-white shadow-xl">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6">
+                <div>
+                    <span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold px-3 py-1 rounded-full">
+                        🏆 LEADERBOARD TOP 3 WINNERS
+                    </span>
+                    <h3 class="text-xl font-bold mt-2">ทำเนียบผู้ชนะ 3 อันดับสูงสุด (ตัดสินจากคะแนนรอบที่ดีที่สุด)</h3>
+                </div>
+                <p class="text-xs text-slate-400">* กดปุ่ม "บันทึกการมอบรางวัล" เพื่อระบุชื่อรางวัลที่ผู้ชนะได้รับ</p>
+            </div>
+
+            <div id="top3-podium-grid" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- Top 1, 2, 3 Cards rendered via JS -->
+            </div>
+        </div>
+
+        <!-- PARTICIPANT LOGS & ROUND TRACKING TABLE -->
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                    <h3 class="font-bold text-lg text-slate-800">รายชื่อผู้เข้าร่วมบูธทั้งหมด & ประวัติรอบการเล่น</h3>
+                    <p class="text-xs text-slate-500">แสดงจำนวนรอบที่แต่ละคนมาเล่น คะแนนสูงสุด และสถานะการรับรางวัล</p>
+                </div>
+                <div class="relative w-full sm:w-64">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                    <input type="text" id="admin-search" oninput="renderAdminDashboard()" placeholder="ค้นหารหัส, ชื่อ, แผนก..." 
+                        class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-emerald-500">
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 text-slate-500 text-[11px] uppercase tracking-wider border-b border-slate-200">
+                            <th class="py-3.5 px-4 font-bold">อันดับ</th>
+                            <th class="py-3.5 px-4 font-bold">รหัสพนักงาน</th>
+                            <th class="py-3.5 px-4 font-bold">ชื่อ - นามสกุล</th>
+                            <th class="py-3.5 px-4 font-bold">แผนก</th>
+                            <th class="py-3.5 px-4 font-bold text-center">จำนวนรอบที่มา</th>
+                            <th class="py-3.5 px-4 font-bold text-right">คะแนนสูงสุด</th>
+                            <th class="py-3.5 px-4 font-bold">รางวัลที่ได้รับ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="participants-table-body" class="divide-y divide-slate-100 text-sm">
+                        <!-- Rows rendered via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- RECENT PLAY HISTORY LOG -->
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-5">
+            <h3 class="font-bold text-base text-slate-800 mb-3 flex items-center gap-2">
+                <i class="fa-solid fa-clock-rotate-left text-slate-400"></i> บันทึกรอบการเล่นล่าสุด (ทั้งหมด <span id="log-total-count">0</span> รอบ)
+            </h3>
+            <div id="round-history-list" class="max-h-60 overflow-y-auto space-y-2 pr-1">
+                <!-- Individual round logs rendered via JS -->
+            </div>
+        </div>
+    </main>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL: ASSIGN PRIZE TO WINNER                                         -->
+    <!-- ===================================================================== -->
+    <div id="prize-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-extrabold text-lg text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-gift text-amber-500"></i> บันทึกการมอบรางวัล
+                </h3>
+                <button onclick="closePrizeModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 mb-4">
+                <p class="text-xs text-amber-700 font-semibold" id="modal-winner-rank">อันดับที่ 1</p>
+                <p class="text-base font-bold text-slate-800" id="modal-winner-name">ชื่อพนักงาน</p>
+                <p class="text-xs text-slate-500" id="modal-winner-dept">แผนก • คะแนน: 0</p>
+            </div>
+
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">ระบุชื่อรางวัลที่มอบให้:</label>
+                    <input type="text" id="prize-name-input" placeholder="เช่น Smart Watch, บัตรกำนัล 1,000 บาท..." 
+                        class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:border-emerald-500">
+                </div>
+                <div class="flex flex-wrap gap-1.5">
+                    <button type="button" onclick="document.getElementById('prize-name-input').value='รางวัลที่ 1: นาฬิกา Smart Watch'" class="text-[11px] bg-slate-100 hover:bg-amber-100 text-slate-600 px-2.5 py-1 rounded-lg">⌚ Smart Watch</button>
+                    <button type="button" onclick="document.getElementById('prize-name-input').value='รางวัลที่ 2: เครื่องปั่นน้ำผลไม้พกพา'" class="text-[11px] bg-slate-100 hover:bg-amber-100 text-slate-600 px-2.5 py-1 rounded-lg">🥤 เครื่องปั่นสุขภาพ</button>
+                    <button type="button" onclick="document.getElementById('prize-name-input').value='รางวัลที่ 3: เซ็ตกระบอกน้ำเก็บความเย็น'" class="text-[11px] bg-slate-100 hover:bg-amber-100 text-slate-600 px-2.5 py-1 rounded-lg">🧴 เซ็ตกระบอกน้ำ</button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2.5 mt-6">
+                <button onclick="closePrizeModal()" class="py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold">ยกเลิก</button>
+                <button onclick="savePrizeAssignment()" class="py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold shadow-md">ยืนยันมอบรางวัล</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL: MANAGE / IMPORT EMPLOYEE DATABASE                              -->
+    <!-- ===================================================================== -->
+    <div id="employee-db-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="font-extrabold text-lg text-slate-800">ฐานข้อมูลพนักงาน (Auto-Lookup)</h3>
+                <button onclick="closeEmployeeModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <p class="text-xs text-slate-500 mb-3">
+                เมื่อผู้เล่นกรอกรหัสพนักงาน ระบบจะดึง <b>ชื่อ-นามสกุล</b> และ <b>แผนก</b> จากรายการด้านล่างนี้ขึ้นมาอัตโนมัติ
+            </p>
+
+            <!-- Google Apps Script URL Connector -->
+            <div class="bg-emerald-50 p-3 rounded-2xl border border-emerald-200 mb-3">
+                <label class="block text-xs font-bold text-emerald-800 mb-1 flex items-center gap-1.5">
+                    <i class="fa-solid fa-table"></i> เชื่อมต่อ Google Sheets (วาง URL ของ Google Apps Script)
+                </label>
+                <div class="flex gap-2">
+                    <input type="url" id="gs-url-input" placeholder="https://script.google.com/macros/s/.../exec" 
+                        class="flex-1 px-3 py-2 text-xs bg-white border border-emerald-300 rounded-xl focus:outline-none focus:border-emerald-600">
+                    <button onclick="syncFromGoogleSheets()" id="btn-sync-gs" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shrink-0 transition flex items-center gap-1">
+                        <i class="fa-solid fa-cloud-arrow-down"></i> ดึงข้อมูล
+                    </button>
+                </div>
+                <p id="gs-sync-status" class="text-[11px] text-emerald-700 mt-1 hidden"></p>
+            </div>
+
+            <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200 mb-3">
+                <label class="block text-xs font-bold text-slate-700 mb-1">หรือเพิ่มรายชื่อพนักงานแบบพิมพ์เอง (รูปแบบ: รหัส, ชื่อ-นามสกุล, แผนก)</label>
+                <textarea id="bulk-emp-input" rows="2" placeholder="ตัวอย่าง:&#10;2001, สมชาย ใจดี, ฝ่ายผลิต&#10;2002, สมหญิง รักสุขภาพ, บัญชี" 
+                    class="w-full p-2.5 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:border-emerald-500"></textarea>
+                <button onclick="bulkAddEmployees()" class="mt-2 w-full py-2 bg-slate-700 hover:bg-slate-800 text-white rounded-xl text-xs font-bold">
+                    <i class="fa-solid fa-plus"></i> เพิ่มเข้าฐานข้อมูล
+                </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto border border-slate-100 rounded-xl divide-y divide-slate-100 text-xs" id="emp-db-list">
+                <!-- Populated via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL: MANUAL FALLBACK START CONFIRMATION                             -->
+    <!-- ===================================================================== -->
+    <div id="manual-start-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl text-center">
+            <div class="w-14 h-14 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-3 shadow-inner">
+                <i class="fa-solid fa-hand"></i>
+            </div>
+            <h3 class="font-extrabold text-lg text-slate-800">ยืนยันการเริ่มแข่งด้วยตนเอง</h3>
+            <p class="text-xs text-slate-500 mt-1 mb-4 leading-relaxed">
+                ปุ่มนี้สำหรับกรณีที่ <b>แอดมินกดปล่อยตัวบนจอใหญ่แล้ว</b> แต่เครื่องของคุณมีปัญหาเครือข่าย หรือไม่รองรับการเริ่มอัตโนมัติ<br><br>
+                <span class="text-amber-700 font-bold">ยืนยันว่าเจ้าหน้าที่แอดมินสั่งปล่อยตัวแล้ว?</span>
+            </p>
+            <div class="space-y-2">
+                <button type="button" onclick="executeManualFallbackStart()" class="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl text-sm font-black shadow-md flex items-center justify-center gap-2 active:scale-95 transition cursor-pointer">
+                    <i class="fa-solid fa-play"></i> ใช่, แอดมินปล่อยตัวแล้ว เริ่มวิ่งเลย!
+                </button>
+                <button type="button" onclick="closeManualStartModal()" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition cursor-pointer">
+                    ยังไม่เริ่ม (รอก่อน)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL: CONFIGURE QR CODE URL (ตั้งค่าลิงก์ QR Code บนจอใหญ่)            -->
+    <!-- ===================================================================== -->
+    <div id="qr-url-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="font-extrabold text-lg text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-qrcode text-emerald-500"></i> ตั้งค่าห้อง & ลิงก์ QR Code บนจอใหญ่
+                </h3>
+                <button onclick="closeQrUrlModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <p class="text-xs text-slate-500 mb-4 leading-relaxed">
+                กำหนดรหัสห้องและ URL เพื่อให้มือถือพนักงานและจอใหญ่เชื่อมต่อกันแบบเรียลไทม์
+            </p>
+            <div class="space-y-3 mb-5">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">รหัสห้องแข่งขัน (Room Code):</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="custom-room-id-input" 
+                            class="flex-1 px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs font-mono font-bold focus:outline-none focus:border-emerald-500" placeholder="booth-1">
+                        <button type="button" onclick="generateNewRandomRoom()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold shrink-0 flex items-center gap-1">
+                            <i class="fa-solid fa-dice"></i> สุ่มห้อง
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Join URL (สำหรับผู้เล่น):</label>
+                    <input type="text" id="custom-qr-url-input" 
+                        class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs font-mono focus:outline-none focus:border-emerald-500">
+                </div>
+                <div class="flex flex-wrap gap-1.5">
+                    <button type="button" onclick="setQrUrlToCurrent()" class="text-[11px] bg-slate-100 hover:bg-emerald-100 text-slate-700 px-2.5 py-1 rounded-lg">
+                        🌐 ใช้ URL ปัจจุบัน
+                    </button>
+                    <button type="button" onclick="setQrUrlToLanIp()" class="text-[11px] bg-slate-100 hover:bg-emerald-100 text-slate-700 px-2.5 py-1 rounded-lg">
+                        📱 แนะนำ IP เครื่องนี้ (http://172.31.40.49:8080)
+                    </button>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2.5">
+                <button onclick="closeQrUrlModal()" class="py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold">ยกเลิก</button>
+                <button onclick="saveCustomQrUrl()" class="py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md">บันทึก & สร้าง QR ใหม่</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- FIREBASE & MULTIPLAYER REAL-TIME SYNC LOGIC                           -->
+    <!-- ===================================================================== -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, onSnapshot, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // 1. INITIAL EMPLOYEE DATABASE
+        let employeeDB = {
+            "1001": { id: "1001", name: "กิตติพงษ์ รักสุขภาพ", dept: "วิศวกรรม (Engineering)" },
+            "1002": { id: "1002", name: "ศิริพร ใจเบิกบาน", dept: "ทรัพยากรบุคคล (HR)" },
+            "1003": { id: "1003", name: "ธนวัฒน์ พลังล้น", dept: "ฝ่ายผลิต (Production)" },
+            "1004": { id: "1004", name: "ปวีณา สดใส", dept: "บัญชีและการเงิน (Finance)" },
+            "1005": { id: "1005", name: "ณัฐพล วิ่งสู้ฟัด", dept: "เทคโนโลยีสารสนเทศ (IT)" },
+            "1006": { id: "1006", name: "ชลธิชา สายฟิต", dept: "การตลาด (Marketing)" }
+        };
+
+        // 2. APPLICATION STATE
+        let playLogs = [];          // All completed rounds across entire event
+        let prizesAwarded = {};     // Assigned prizes for Top 3
+        let activeRacers = {};      // Current heat racers: { empId: { empId, name, dept, avatar, score, isBot, color } }
+        let raceState = {
+            status: 'lobby',        // 'lobby' | 'countdown' | 'racing' | 'finished'
+            startTime: 0,
+            duration: 30,
+            adminStarted: false,
+            adminStartedAt: 0
+        };
+
+        let currentPlayer = null;
+        let selectedAvatar = '🏃‍♂️';
+        let selectedWinnerForPrize = null;
+
+        // Local Gameplay Variables
+        const GAME_DURATION = 30;
+        const TARGET_STEPS_FOR_FINISH = 130; // Steps needed to reach 100% of visual track
+        const DEFAULT_GS_URL = "https://script.google.com/macros/s/AKfycbwS_D5RJtw8kL3ILJ5uVWfW3Fj0TKNARdD5aC-cP3Vzyi66axJRRi50Y6cGhTQVXUv1/exec";
+        let googleScriptUrl = DEFAULT_GS_URL;   // Pre-configured Google Apps Script Web App URL
+        let currentScore = 0;
+        let isPlaying = false;
+        let gameTimerInterval = null;
+        let botSimulationInterval = null;
+        let lastStepTime = 0;
+        let lastAccel = { x: 0, y: 0, z: 0 };
+        let lastSyncedScore = 0;
+        let isCountdownRunning = false;
+
+        const LANE_COLORS = [
+            { bg: 'bg-emerald-500', light: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700' },
+            { bg: 'bg-sky-500', light: 'bg-sky-50', border: 'border-sky-200', text: 'text-sky-700' },
+            { bg: 'bg-amber-500', light: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700' },
+            { bg: 'bg-rose-500', light: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-700' },
+            { bg: 'bg-purple-500', light: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700' },
+            { bg: 'bg-indigo-500', light: 'bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-700' }
+        ];
+
+        // =====================================================================
+        // REAL-TIME MULTIPLAYER SYNC ENGINE (MQTT over WebSockets + BroadcastChannel)
+        // =====================================================================
+        const clientUUID = 'c_' + Math.random().toString(36).substring(2, 9);
+        const startupParams = new URLSearchParams(window.location.search);
+        let currentRoom = (startupParams.get('room') || localStorage.getItem('health_sprint_room_id') || 'booth-1').trim().toLowerCase();
+        let mqttClient = null;
+        let broadcastChannel = null;
+        let lastBroadcastScore = 0;
+        window.currentActiveView = startupParams.get('view') || (window.innerWidth < 768 ? 'player' : 'stage');
+
+        function updateRoomBadges() {
+            const rDisplays = [
+                document.getElementById('stage-room-text'),
+                document.getElementById('stage-room-badge'),
+                document.getElementById('admin-room-text'),
+                document.getElementById('waiting-room-badge')
+            ];
+            rDisplays.forEach(el => {
+                if (el) el.textContent = currentRoom;
+            });
+            const input = document.getElementById('custom-room-id-input');
+            if (input) input.value = currentRoom;
+        }
+
+        function updateNetworkStatusBadge(isConnected) {
+            const syncBadge = document.getElementById('sync-badge');
+            if (syncBadge) {
+                if (isConnected) {
+                    syncBadge.className = "text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1";
+                    syncBadge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span> Realtime (${currentRoom})`;
+                } else {
+                    syncBadge.className = "text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1";
+                    syncBadge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Reconnecting...`;
+                }
+            }
+            const stageBadge = document.getElementById('stage-network-badge');
+            if (stageBadge) {
+                if (isConnected) {
+                    stageBadge.className = "text-[11px] bg-slate-800 text-emerald-400 border border-slate-700 px-2.5 py-0.5 rounded-full font-mono flex items-center gap-1";
+                    stageBadge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> ห้อง: <span>${currentRoom}</span>`;
+                } else {
+                    stageBadge.className = "text-[11px] bg-slate-800 text-amber-400 border border-slate-700 px-2.5 py-0.5 rounded-full font-mono flex items-center gap-1";
+                    stageBadge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span> เชื่อมต่อ: <span>${currentRoom}</span>`;
+                }
+            }
+        }
+
+        function broadcastSyncMessage(msg) {
+            msg.senderId = clientUUID;
+            msg.room = currentRoom;
+            msg.timestamp = Date.now();
+
+            if (broadcastChannel) {
+                try {
+                    broadcastChannel.postMessage(msg);
+                } catch (e) {}
+            }
+
+            if (mqttClient && mqttClient.connected) {
+                try {
+                    const topic = `health_sprint_booth_2026/room/${currentRoom}`;
+                    mqttClient.publish(topic, JSON.stringify(msg), { qos: 0 });
+                } catch (e) {
+                    console.warn("MQTT publish error:", e);
+                }
+            }
+        }
+
+        function handleSyncMessage(msg) {
+            if (!msg || !msg.type) return;
+
+            switch (msg.type) {
+                case 'JOIN': {
+                    if (msg.racer && msg.racer.empId) {
+                        activeRacers[msg.racer.empId] = msg.racer;
+                        renderAllLiveViews();
+                        renderAdminDashboard();
+
+                        if (window.currentActiveView === 'stage' || window.currentActiveView === 'admin' || !currentPlayer) {
+                            broadcastSyncMessage({
+                                type: 'ROOM_STATE',
+                                racers: activeRacers,
+                                raceState: raceState
+                            });
+                        }
+                    }
+                    break;
+                }
+
+                case 'LEAVE': {
+                    if (msg.empId && activeRacers[msg.empId]) {
+                        delete activeRacers[msg.empId];
+                        renderAllLiveViews();
+                        renderAdminDashboard();
+                    }
+                    break;
+                }
+
+                case 'REQUEST_STATE': {
+                    if (Object.keys(activeRacers).length > 0 || window.currentActiveView === 'stage' || window.currentActiveView === 'admin') {
+                        broadcastSyncMessage({
+                            type: 'ROOM_STATE',
+                            racers: activeRacers,
+                            raceState: raceState
+                        });
+                    }
+                    break;
+                }
+
+                case 'ROOM_STATE': {
+                    if (msg.racers) {
+                        Object.keys(msg.racers).forEach(id => {
+                            if (!activeRacers[id]) {
+                                activeRacers[id] = msg.racers[id];
+                            } else if (!currentPlayer || currentPlayer.id !== id) {
+                                activeRacers[id] = msg.racers[id];
+                            }
+                        });
+                    }
+                    if (msg.raceState) {
+                        const prev = raceState.status;
+                        raceState = { ...raceState, ...msg.raceState };
+                        handleRemoteRaceStateChange(prev, raceState.status);
+                    }
+                    renderAllLiveViews();
+                    renderAdminDashboard();
+                    break;
+                }
+
+                case 'START': {
+                    const prev = raceState.status;
+                    raceState.status = 'countdown';
+                    raceState.adminStarted = true;
+                    raceState.adminStartedAt = msg.timestamp || Date.now();
+                    raceState.duration = msg.duration || GAME_DURATION;
+
+                    if (msg.racers) {
+                        Object.keys(msg.racers).forEach(id => {
+                            if (activeRacers[id]) activeRacers[id].score = 0;
+                            else activeRacers[id] = msg.racers[id];
+                        });
+                    } else {
+                        Object.values(activeRacers).forEach(r => { r.score = 0; });
+                    }
+
+                    if (currentPlayer && activeRacers[currentPlayer.id]) {
+                        runCountdownSequence();
+                    } else {
+                        handleRemoteRaceStateChange(prev, 'countdown');
+                    }
+                    renderAllLiveViews();
+                    renderAdminDashboard();
+                    break;
+                }
+
+                case 'SCORE': {
+                    if (msg.empId && activeRacers[msg.empId]) {
+                        if (!currentPlayer || currentPlayer.id !== msg.empId) {
+                            activeRacers[msg.empId].score = msg.score;
+                            renderAllLiveViews();
+                        }
+                    }
+                    break;
+                }
+
+                case 'RESET': {
+                    clearInterval(gameTimerInterval);
+                    clearInterval(botSimulationInterval);
+                    isPlaying = false;
+                    isCountdownRunning = false;
+                    activeRacers = {};
+                    raceState = {
+                        status: 'lobby',
+                        startTime: 0,
+                        duration: GAME_DURATION,
+                        adminStarted: false,
+                        adminStartedAt: 0
+                    };
+
+                    const waitBox = document.getElementById('step-waiting');
+                    const playBox = document.getElementById('step-playing');
+                    const resBox = document.getElementById('step-result');
+                    const checkBox = document.getElementById('step-checkin');
+
+                    const inLobbyOrGame = (waitBox && !waitBox.classList.contains('hidden')) ||
+                                          (playBox && !playBox.classList.contains('hidden')) ||
+                                          (resBox && !resBox.classList.contains('hidden'));
+
+                    if (inLobbyOrGame) {
+                        if (waitBox) waitBox.classList.add('hidden');
+                        if (playBox) playBox.classList.add('hidden');
+                        if (resBox) resBox.classList.add('hidden');
+                        if (checkBox) checkBox.classList.remove('hidden');
+                        showToast("แอดมินเริ่มรอบใหม่แล้วค่ะ ลงทะเบียนรอบถัดไปได้เลย", "info");
+                    }
+
+                    renderAllLiveViews();
+                    renderAdminDashboard();
+                    if (window.generateStageQRCode) window.generateStageQRCode();
+                    break;
+                }
+
+                case 'PRIZE_AWARD': {
+                    if (msg.empId && msg.prizeData) {
+                        prizesAwarded[msg.empId] = msg.prizeData;
+                        renderAdminDashboard();
+                        renderAllLiveViews();
+                    }
+                    break;
+                }
+            }
+        }
+
+        function initMQTTSync() {
+            try {
+                if (typeof BroadcastChannel !== 'undefined') {
+                    broadcastChannel = new BroadcastChannel('health_sprint_room_' + currentRoom);
+                    broadcastChannel.onmessage = (event) => {
+                        if (event.data && event.data.senderId !== clientUUID) {
+                            handleSyncMessage(event.data);
+                        }
+                    };
+                }
+            } catch (e) {
+                console.warn("BroadcastChannel error:", e);
+            }
+
+            if (typeof mqtt === 'undefined') {
+                console.warn("MQTT library not loaded");
+                return;
+            }
+
+            const BROKERS = [
+                'wss://broker.hivemq.com:8884/mqtt',
+                'wss://broker.emqx.io:8084/mqtt'
+            ];
+            let brokerIdx = 0;
+
+            function tryConnect() {
+                const brokerUrl = BROKERS[brokerIdx];
+                const topic = `health_sprint_booth_2026/room/${currentRoom}`;
+                try {
+                    const client = mqtt.connect(brokerUrl, {
+                        clientId: 'hs_' + clientUUID + '_' + Math.random().toString(16).substring(2, 6),
+                        clean: true,
+                        connectTimeout: 5000,
+                        reconnectPeriod: 4000,
+                        keepalive: 30
+                    });
+
+                    client.on('connect', () => {
+                        console.log("MQTT connected to broker:", brokerUrl);
+                        mqttClient = client;
+                        updateNetworkStatusBadge(true);
+                        client.subscribe(topic, { qos: 0 }, (err) => {
+                            if (!err) {
+                                broadcastSyncMessage({ type: 'REQUEST_STATE' });
+                            }
+                        });
+                    });
+
+                    client.on('message', (subTopic, payload) => {
+                        try {
+                            const msg = JSON.parse(payload.toString());
+                            if (msg && msg.senderId !== clientUUID) {
+                                handleSyncMessage(msg);
+                            }
+                        } catch (e) {}
+                    });
+
+                    client.on('error', (err) => {
+                        console.warn("MQTT broker error:", err);
+                        updateNetworkStatusBadge(false);
+                    });
+
+                    client.on('offline', () => {
+                        updateNetworkStatusBadge(false);
+                    });
+
+                    return client;
+                } catch (e) {
+                    console.warn("MQTT init error:", e);
+                    return null;
+                }
+            }
+
+            mqttClient = tryConnect();
+        }
+
+        function reconnectMQTTRoom(newRoom) {
+            currentRoom = newRoom;
+            updateRoomBadges();
+            if (broadcastChannel) {
+                try { broadcastChannel.close(); } catch (e) {}
+            }
+            try {
+                if (typeof BroadcastChannel !== 'undefined') {
+                    broadcastChannel = new BroadcastChannel('health_sprint_room_' + currentRoom);
+                    broadcastChannel.onmessage = (event) => {
+                        if (event.data && event.data.senderId !== clientUUID) {
+                            handleSyncMessage(event.data);
+                        }
+                    };
+                }
+            } catch (e) {}
+
+            if (mqttClient && mqttClient.connected) {
+                try {
+                    const topic = `health_sprint_booth_2026/room/${currentRoom}`;
+                    mqttClient.subscribe(topic, { qos: 0 }, () => {
+                        broadcastSyncMessage({ type: 'REQUEST_STATE' });
+                    });
+                } catch (e) {}
+            }
+        }
+
+        // 3. FIREBASE REAL-TIME INITIALIZATION (Rule 1, 2, 3 Compliant)
+        let db = null;
+        let auth = null;
+        let currentUser = null;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'health-sprint-default';
+
+        // Auto-fetch employee list from Google Apps Script on page load
+        async function fetchEmployeesFromGS(targetUrl, silent = false) {
+            const urlToUse = targetUrl || googleScriptUrl;
+            const badgeEl = document.getElementById('player-db-status');
+            if (!urlToUse) return false;
+
+            try {
+                const response = await fetch(urlToUse, { redirect: 'follow' });
+                const text = await response.text();
+                const result = JSON.parse(text);
+
+                if (result.status === "success" && result.employees) {
+                    const normalizedMap = {};
+                    Object.values(result.employees).forEach(emp => {
+                        const rawKey = String(emp.id || "").trim().toUpperCase();
+                        if (!rawKey) return;
+                        const record = {
+                            id: rawKey,
+                            name: String(emp.name || "").trim(),
+                            dept: String(emp.dept || "-").trim()
+                        };
+                        normalizedMap[rawKey] = record;
+                        // Also index without leading zeros (e.g., "00123" -> "123")
+                        const strippedKey = rawKey.replace(/^0+/, '');
+                        if (strippedKey && strippedKey !== rawKey) {
+                            normalizedMap[strippedKey] = record;
+                        }
+                    });
+
+                    employeeDB = { ...employeeDB, ...normalizedMap };
+                    const totalUnique = Object.keys(result.employees).length;
+
+                    if (badgeEl) {
+                        badgeEl.className = "mt-2 inline-flex items-center gap-1.5 text-[11px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 rounded-full font-semibold";
+                        badgeEl.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-500"></i> เชื่อมต่อฐานข้อมูลพนักงานแล้ว (${totalUnique} คน)`;
+                    }
+
+                    // Re-trigger lookup if user already typed an ID while loading
+                    const currentInputVal = document.getElementById('emp-id-input')?.value;
+                    if (currentInputVal) lookupEmployee(currentInputVal);
+
+                    renderAdminDashboard();
+                    return totalUnique;
+                } else {
+                    throw new Error(result.message || "Invalid GS response");
+                }
+            } catch (err) {
+                console.warn("Google Sheets fetch warning:", err);
+                if (badgeEl) {
+                    badgeEl.className = "mt-2 inline-flex items-center gap-1.5 text-[11px] bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1 rounded-full font-medium";
+                    badgeEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-amber-500"></i> โหมดออฟไลน์ (กรอกชื่อ-แผนกเองได้หากไม่พบรหัส)`;
+                }
+                return false;
+            }
+        }
+
+        async function initFirebaseSync() {
+            // Immediately load employee data from the user's Google Apps Script URL
+            document.getElementById('gs-url-input').value = googleScriptUrl;
+            fetchEmployeesFromGS(googleScriptUrl, true);
+
+            try {
+                if (typeof __firebase_config === 'undefined') return;
+                const firebaseConfig = JSON.parse(__firebase_config);
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                // Rule 3: Auth BEFORE queries
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    const cred = await signInWithCustomToken(auth, __initial_auth_token);
+                    currentUser = cred.user;
+                } else {
+                    const cred = await signInAnonymously(auth);
+                    currentUser = cred.user;
+                }
+
+                if (!currentUser) return;
+
+                // Listen to Live Race State (Rule 1: strict path)
+                const raceDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'live_race', 'current_heat');
+                onSnapshot(raceDocRef, (snap) => {
+                    if (snap.exists()) {
+                        const data = snap.data();
+                        const prevStatus = raceState.status;
+                        raceState = {
+                            status: data.status || 'lobby',
+                            startTime: data.startTime || 0,
+                            duration: data.duration || 30,
+                            adminStarted: !!(data.adminStarted || data.status === 'countdown' || data.status === 'racing'),
+                            adminStartedAt: data.adminStartedAt || 0
+                        };
+                        activeRacers = data.racers || {};
+                        
+                        // Sync UI across all open devices/tabs
+                        handleRemoteRaceStateChange(prevStatus, raceState.status);
+                        renderAllLiveViews();
+                    }
+                }, (err) => console.warn("Live race sync error:", err));
+
+                // Listen to Completed Play Logs
+                const logsColRef = collection(db, 'artifacts', appId, 'public', 'data', 'play_logs');
+                onSnapshot(logsColRef, (snap) => {
+                    const fetched = [];
+                    snap.forEach(d => fetched.push({ docId: d.id, ...d.data() }));
+                    // Rule 2: Sort in JS memory
+                    fetched.sort((a, b) => (a.roundId || 0) - (b.roundId || 0));
+                    playLogs = fetched;
+                    renderAdminDashboard();
+                }, (err) => console.warn("Logs sync error:", err));
+
+                // Listen to Prizes Awarded
+                const prizesColRef = collection(db, 'artifacts', appId, 'public', 'data', 'prizes');
+                onSnapshot(prizesColRef, (snap) => {
+                    const map = {};
+                    snap.forEach(d => { map[d.id] = d.data(); });
+                    prizesAwarded = map;
+                    renderAdminDashboard();
+                }, (err) => console.warn("Prizes sync error:", err));
+
+                // Listen to Saved Google Script URL Config across devices
+                const gsDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'gs_config');
+                onSnapshot(gsDocRef, (snap) => {
+                    if (snap.exists() && snap.data().url && snap.data().url !== googleScriptUrl) {
+                        googleScriptUrl = snap.data().url;
+                        document.getElementById('gs-url-input').value = googleScriptUrl;
+                        fetchEmployeesFromGS(googleScriptUrl, true);
+                    }
+                }, (err) => {});
+
+            } catch (e) {
+                console.warn("Running in local single-device mode:", e);
+            }
+        }
+
+        async function pushLiveRaceState() {
+            renderAllLiveViews();
+            broadcastSyncMessage({
+                type: 'ROOM_STATE',
+                raceState: raceState,
+                racers: activeRacers
+            });
+            if (!db || !currentUser) return;
+            try {
+                const raceDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'live_race', 'current_heat');
+                await setDoc(raceDocRef, {
+                    status: raceState.status,
+                    startTime: raceState.startTime,
+                    duration: raceState.duration,
+                    adminStarted: raceState.adminStarted || false,
+                    adminStartedAt: raceState.adminStartedAt || 0,
+                    racers: activeRacers
+                }, { merge: true });
+            } catch (e) {
+                console.warn("Sync write error:", e);
+            }
+        }
+
+        async function updateMyLiveScoreInCloud(newScore) {
+            if (!currentPlayer || !activeRacers[currentPlayer.id]) return;
+            activeRacers[currentPlayer.id].score = newScore;
+            renderAllLiveViews();
+
+            // Real-time broadcast score to Big Stage & other devices
+            if (newScore - lastBroadcastScore >= 2 || newScore === 0 || newScore === 1) {
+                lastBroadcastScore = newScore;
+                broadcastSyncMessage({
+                    type: 'SCORE',
+                    empId: currentPlayer.id,
+                    score: newScore
+                });
+            }
+
+            // Throttle Firestore writes to every 3 steps to keep smooth performance
+            if (db && currentUser && (newScore - lastSyncedScore >= 3 || newScore === 0)) {
+                lastSyncedScore = newScore;
+                try {
+                    const raceDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'live_race', 'current_heat');
+                    await updateDoc(raceDocRef, {
+                        [`racers.${currentPlayer.id}.score`]: newScore
+                    });
+                } catch (e) {}
+            }
+        }
+
+        // Sound Synthesizer (Tone.js)
+        let synth = null;
+        function initAudio() {
+            if (!synth && typeof Tone !== 'undefined') {
+                Tone.start();
+                synth = new Tone.PolySynth(Tone.Synth).toDestination();
+                synth.volume.value = -8;
+            }
+        }
+
+        function playBeep(note = "C5", duration = "16n") {
+            try {
+                if (synth) synth.triggerAttackRelease(note, duration);
+            } catch (e) {}
+        }
+
+        // Toast Notification
+        let toastTimeout = null;
+        window.showToast = function(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const msgEl = document.getElementById('toast-msg');
+            const iconEl = document.getElementById('toast-icon');
+            
+            msgEl.textContent = message;
+            iconEl.className = type === 'success' 
+                ? 'fa-solid fa-circle-check text-emerald-400 text-lg' 
+                : type === 'warning' 
+                    ? 'fa-solid fa-triangle-exclamation text-amber-400 text-lg' 
+                    : 'fa-solid fa-circle-info text-sky-400 text-lg';
+
+            container.classList.remove('opacity-0', '-translate-y-4', 'pointer-events-none');
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                container.classList.add('opacity-0', '-translate-y-4', 'pointer-events-none');
+            }, 3000);
+        };
+
+        // View Navigation (Mobile Player vs Big Stage Screen vs Admin Dashboard)
+        window.switchView = function(view) {
+            window.currentActiveView = view;
+            const views = {
+                player: document.getElementById('view-player'),
+                stage: document.getElementById('view-stage'),
+                admin: document.getElementById('view-admin')
+            };
+            const btns = {
+                player: document.getElementById('btn-view-player'),
+                stage: document.getElementById('btn-view-stage'),
+                admin: document.getElementById('btn-view-admin')
+            };
+
+            Object.keys(views).forEach(k => {
+                if (k === view) {
+                    views[k].classList.remove('hidden');
+                    if (k === 'stage') views[k].classList.add('flex');
+                    btns[k].className = "px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all bg-white text-emerald-600 shadow-sm flex items-center gap-1.5";
+                } else {
+                    views[k].classList.add('hidden');
+                    views[k].classList.remove('flex');
+                    btns[k].className = "px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all text-slate-600 hover:text-slate-900 flex items-center gap-1.5";
+                }
+            });
+
+            if (view === 'stage') {
+                renderAllLiveViews();
+                if (window.generateStageQRCode) window.generateStageQRCode();
+            }
+            if (view === 'admin') renderAdminDashboard();
+        };
+
+        // =====================================================================
+        // EMPLOYEE AUTO-LOOKUP & AVATAR SELECTION
+        // =====================================================================
+        window.fillDemoId = function(id) {
+            const input = document.getElementById('emp-id-input');
+            input.value = id;
+            lookupEmployee(id);
+        };
+
+        window.selectAvatar = function(emoji, btnEl) {
+            selectedAvatar = emoji;
+            document.querySelectorAll('.avatar-opt').forEach(el => {
+                el.className = "avatar-opt py-2 text-2xl bg-slate-50 border-2 border-slate-200 rounded-xl transition";
+            });
+            btnEl.className = "avatar-opt py-2 text-2xl bg-emerald-100 border-2 border-emerald-500 rounded-xl transition scale-105";
+        };
+
+        window.lookupEmployee = function(rawId) {
+            const id = rawId.trim().toUpperCase();
+            const strippedId = id.replace(/^0+/, '');
+            const infoCard = document.getElementById('emp-info-card');
+            const notFoundBox = document.getElementById('emp-not-found-box');
+
+            if (!id) {
+                infoCard.classList.add('hidden');
+                notFoundBox.classList.add('hidden');
+                disableStartButton("กรอกรหัสพนักงานเพื่อลงสนาม");
+                currentPlayer = null;
+                return;
+            }
+
+            const matchedEmp = employeeDB[id] || (strippedId ? employeeDB[strippedId] : null);
+
+            if (matchedEmp) {
+                currentPlayer = matchedEmp;
+                
+                document.getElementById('emp-fullname').textContent = matchedEmp.name;
+                document.getElementById('emp-dept').textContent = matchedEmp.dept;
+                
+                const roundsPlayed = playLogs.filter(log => log.empId === matchedEmp.id).length;
+                document.getElementById('emp-play-count-badge').textContent = `เล่นแล้ว ${roundsPlayed} รอบ`;
+
+                infoCard.classList.remove('hidden');
+                notFoundBox.classList.add('hidden');
+                enableStartButton();
+            } else {
+                currentPlayer = { id: id, isNew: true };
+                infoCard.classList.add('hidden');
+                notFoundBox.classList.remove('hidden');
+                enableStartButton();
+            }
+        };
+
+        function enableStartButton() {
+            const btn = document.getElementById('btn-start-game');
+            btn.disabled = false;
+            btn.className = "w-full py-4 rounded-2xl font-extrabold text-lg text-white shadow-lg transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 active:scale-95 cursor-pointer animate-pulse-fast";
+            btn.innerHTML = `<i class="fa-solid fa-flag-checkered text-xl"></i><span>เข้าสู่สนามแข่ง (ขึ้นจอใหญ่ทันที)</span>`;
+        }
+
+        function disableStartButton(text) {
+            const btn = document.getElementById('btn-start-game');
+            btn.disabled = true;
+            btn.className = "w-full py-4 rounded-2xl font-extrabold text-lg text-white shadow-lg transition-all flex items-center justify-center gap-2 bg-slate-300 cursor-not-allowed";
+            btn.innerHTML = `<i class="fa-solid fa-flag-checkered text-xl"></i><span>${text}</span>`;
+        }
+
+        // =====================================================================
+        // LOBBY & MULTI-PLAYER RACE MANAGEMENT
+        // =====================================================================
+        window.joinRaceLobby = async function() {
+            if (!currentPlayer) return;
+
+            if (currentPlayer.isNew) {
+                const nameVal = document.getElementById('new-emp-name').value.trim();
+                const deptVal = document.getElementById('new-emp-dept').value.trim();
+                if (!nameVal || !deptVal) {
+                    showToast("กรุณากรอกชื่อ-นามสกุล และแผนกให้ครบถ้วนค่ะ", "warning");
+                    return;
+                }
+                const newEmp = { id: currentPlayer.id, name: nameVal, dept: deptVal };
+                employeeDB[currentPlayer.id] = newEmp;
+                currentPlayer = newEmp;
+            }
+
+            initAudio();
+
+            // If previous race was finished, reset lobby cleanly before adding new player
+            if (raceState.status === 'finished') {
+                activeRacers = {};
+                raceState.status = 'lobby';
+                raceState.adminStarted = false;
+                raceState.adminStartedAt = 0;
+            }
+
+            const existingCount = Object.keys(activeRacers).length;
+            const racerData = {
+                empId: currentPlayer.id,
+                name: currentPlayer.name,
+                dept: currentPlayer.dept,
+                avatar: selectedAvatar,
+                score: 0,
+                isBot: false,
+                colorIdx: existingCount % LANE_COLORS.length
+            };
+            activeRacers[currentPlayer.id] = racerData;
+
+            // Broadcast JOIN event so Admin & Big Stage receive the player instantly
+            broadcastSyncMessage({
+                type: 'JOIN',
+                racer: racerData
+            });
+
+            await pushLiveRaceState();
+
+            // Move Mobile UI to Waiting Room
+            document.getElementById('step-checkin').classList.add('hidden');
+            document.getElementById('step-result').classList.add('hidden');
+            document.getElementById('step-waiting').classList.remove('hidden');
+
+            document.getElementById('waiting-my-avatar').textContent = selectedAvatar;
+            document.getElementById('waiting-my-name').textContent = `${currentPlayer.name} (${currentPlayer.id})`;
+            updateWaitingRoomUI();
+            showToast("ลงสนามเรียบร้อย! ตัวละครของคุณขึ้นบนจอใหญ่แล้ว", "success");
+        };
+
+        window.leaveLobby = async function() {
+            if (currentPlayer && activeRacers[currentPlayer.id]) {
+                const leavingId = currentPlayer.id;
+                delete activeRacers[leavingId];
+                broadcastSyncMessage({
+                    type: 'LEAVE',
+                    empId: leavingId
+                });
+                await pushLiveRaceState();
+            }
+            document.getElementById('step-waiting').classList.add('hidden');
+            document.getElementById('step-checkin').classList.remove('hidden');
+            updateWaitingRoomUI();
+        };
+
+        // Add 5 Demo Racers so user can test 5 players racing simultaneously right away
+        window.addDemoRacersToLobby = async function() {
+            if (raceState.status === 'racing' || raceState.status === 'countdown') {
+                showToast("กำลังแข่งขันอยู่ กรุณารอให้จบรอบก่อนนะคะ", "warning");
+                return;
+            }
+            if (raceState.status === 'finished') {
+                activeRacers = {};
+            }
+
+            const bots = [
+                { empId: "1001", name: "กิตติพงษ์ รักสุขภาพ", dept: "วิศวกรรม", avatar: "🏃‍♂️", speed: 4.3 },
+                { empId: "1002", name: "ศิริพร ใจเบิกบาน", dept: "HR", avatar: "🏃‍♀️", speed: 4.6 },
+                { empId: "1003", name: "ธนวัฒน์ พลังล้น", dept: "ฝ่ายผลิต", avatar: "🦸‍♂️", speed: 4.1 },
+                { empId: "1004", name: "ปวีณา สดใส", dept: "บัญชี", avatar: "🐆", speed: 4.8 },
+                { empId: "1005", name: "ณัฐพล วิ่งสู้ฟัด", dept: "IT", avatar: "🚀", speed: 4.4 }
+            ];
+
+            bots.forEach((b, idx) => {
+                if (!activeRacers[b.empId]) {
+                    activeRacers[b.empId] = {
+                        empId: b.empId,
+                        name: b.name,
+                        dept: b.dept,
+                        avatar: b.avatar,
+                        score: 0,
+                        isBot: true,
+                        botSpeed: b.speed,
+                        colorIdx: Object.keys(activeRacers).length % LANE_COLORS.length
+                    };
+                }
+            });
+
+            raceState.status = 'lobby';
+            broadcastSyncMessage({
+                type: 'ROOM_STATE',
+                raceState: raceState,
+                racers: activeRacers
+            });
+            await pushLiveRaceState();
+            showToast("เพิ่มนักวิ่งจำลองลงสนามครบ 5 คนแล้ว! กด 'ปล่อยตัวพร้อมกัน!' ได้เลย", "success");
+        };
+
+        window.resetCurrentRaceLobby = async function() {
+            clearInterval(gameTimerInterval);
+            clearInterval(botSimulationInterval);
+            isPlaying = false;
+            isCountdownRunning = false;
+            activeRacers = {};
+            raceState = { 
+                status: 'lobby', 
+                startTime: 0, 
+                duration: GAME_DURATION,
+                adminStarted: false,
+                adminStartedAt: 0
+            };
+            broadcastSyncMessage({
+                type: 'RESET'
+            });
+            await pushLiveRaceState();
+            updateWaitingRoomUI();
+            showToast("ล้างสนามเรียบร้อย พร้อมรับผู้เล่นรอบใหม่", "info");
+        };
+
+        // Trigger simultaneous start for ALL racers in the lobby (ADMIN ONLY)
+        window.triggerStartRace = async function() {
+            const racerIds = Object.keys(activeRacers);
+            if (racerIds.length === 0) {
+                showToast("ยังไม่มีผู้เล่นในสนาม กรุณาลงทะเบียนก่อนเริ่มแข่งค่ะ", "warning");
+                return;
+            }
+            if (raceState.status === 'racing' || raceState.status === 'countdown') {
+                showToast("การแข่งขันกำลังดำเนินอยู่ค่ะ", "info");
+                return;
+            }
+
+            initAudio();
+
+            // Request iOS Motion Permission if triggered on mobile
+            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                try {
+                    const perm = await DeviceMotionEvent.requestPermission();
+                    if (perm === 'granted') window.addEventListener('devicemotion', handleDeviceMotion);
+                } catch (e) {}
+            } else if (typeof window.addEventListener === 'function') {
+                window.addEventListener('devicemotion', handleDeviceMotion);
+            }
+
+            // Reset scores to 0 for everyone in this heat
+            racerIds.forEach(id => { activeRacers[id].score = 0; });
+            raceState.status = 'countdown';
+            raceState.adminStarted = true;
+            raceState.adminStartedAt = Date.now();
+            raceState.startTime = 0;
+            
+            showToast("แอดมินส่งสัญญาณปล่อยตัวแล้ว! กำลังนับถอยหลัง...", "success");
+
+            // Broadcast START to all mobile devices
+            broadcastSyncMessage({
+                type: 'START',
+                timestamp: Date.now(),
+                duration: GAME_DURATION,
+                racers: activeRacers
+            });
+            
+            // Start countdown locally immediately so it never gets stuck
+            runCountdownSequence();
+            await pushLiveRaceState();
+        };
+
+        // Dynamic Waiting Room UI updater
+        function updateWaitingRoomUI() {
+            const lockBox = document.getElementById('waiting-locked-box');
+            const startedBox = document.getElementById('waiting-admin-started-box');
+            if (!lockBox || !startedBox) return;
+
+            const hasAdminStarted = !!(raceState.adminStarted || raceState.status === 'countdown' || raceState.status === 'racing');
+
+            if (hasAdminStarted) {
+                lockBox.classList.add('hidden');
+                startedBox.classList.remove('hidden');
+            } else {
+                lockBox.classList.remove('hidden');
+                startedBox.classList.add('hidden');
+            }
+
+            // Update Admin status pill & count on Admin Dashboard
+            const adminPill = document.getElementById('admin-race-status-pill');
+            const adminCount = document.getElementById('admin-racer-count');
+            const racerCount = Object.keys(activeRacers).length;
+
+            if (adminCount) adminCount.textContent = racerCount;
+            if (adminPill) {
+                if (raceState.status === 'lobby') {
+                    adminPill.textContent = "รอผู้เล่น / รอปล่อยตัว";
+                    adminPill.className = "bg-amber-500 text-slate-950 text-[11px] font-black px-2.5 py-0.5 rounded-full uppercase";
+                } else if (raceState.status === 'countdown') {
+                    adminPill.textContent = "⏳ กำลังนับถอยหลัง";
+                    adminPill.className = "bg-amber-400 text-slate-950 text-[11px] font-black px-2.5 py-0.5 rounded-full uppercase animate-bounce";
+                } else if (raceState.status === 'racing') {
+                    adminPill.textContent = "🔥 กำลังแข่งขันสด";
+                    adminPill.className = "bg-rose-500 text-white text-[11px] font-black px-2.5 py-0.5 rounded-full uppercase animate-pulse";
+                } else if (raceState.status === 'finished') {
+                    adminPill.textContent = "🏁 จบการแข่งขัน";
+                    adminPill.className = "bg-emerald-500 text-slate-950 text-[11px] font-black px-2.5 py-0.5 rounded-full uppercase";
+                }
+            }
+        }
+
+        // Player Self-Start (Activates gyro/accelerometer & Web Audio on mobile via direct user gesture)
+        window.playerSelfStartRace = async function() {
+            initAudio();
+
+            // Request iOS Motion Permission directly within user gesture
+            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                try {
+                    const perm = await DeviceMotionEvent.requestPermission();
+                    if (perm === 'granted') {
+                        window.addEventListener('devicemotion', handleDeviceMotion);
+                    } else {
+                        showToast("ไม่ได้รับอนุญาตใช้เซนเซอร์ คุณสามารถแตะปุ่มเพื่อวิ่งได้ค่ะ", "info");
+                    }
+                } catch (e) {
+                    console.warn("Motion permission request error:", e);
+                }
+            } else if (typeof window.addEventListener === 'function') {
+                window.addEventListener('devicemotion', handleDeviceMotion);
+            }
+
+            // If main race is already running (e.g. 5 seconds into race), catch up to master clock
+            if (raceState.status === 'racing') {
+                catchupToActiveRace();
+            } else {
+                runCountdownSequence();
+            }
+        };
+
+        // Fallback / Emergency Manual Start Confirmation Dialog Handlers
+        window.confirmManualFallbackStart = function() {
+            // If admin has already triggered start in cloud raceState
+            if (raceState.adminStarted || raceState.status === 'countdown' || raceState.status === 'racing') {
+                playerSelfStartRace();
+            } else {
+                // Otherwise prompt confirmation modal so they don't start before admin
+                document.getElementById('manual-start-modal').classList.remove('hidden');
+            }
+        };
+
+        window.closeManualStartModal = function() {
+            document.getElementById('manual-start-modal').classList.add('hidden');
+        };
+
+        window.executeManualFallbackStart = async function() {
+            closeManualStartModal();
+            raceState.adminStarted = true;
+            raceState.adminStartedAt = Date.now();
+            showToast("เปิดระบบแข่งขันด้วยตนเองเรียบร้อย!", "success");
+            await playerSelfStartRace();
+        };
+
+        // Mid-Race or Delayed Catch-up for mobile devices that synced late
+        function catchupToActiveRace() {
+            if (isPlaying) return;
+            isCountdownRunning = false;
+
+            // Switch mobile player screen to playing view
+            if (currentPlayer && activeRacers[currentPlayer.id]) {
+                document.getElementById('step-waiting').classList.add('hidden');
+                document.getElementById('step-result').classList.add('hidden');
+                document.getElementById('step-playing').classList.remove('hidden');
+            }
+
+            document.getElementById('countdown-overlay').classList.add('hidden');
+            document.getElementById('stage-countdown-overlay').classList.add('hidden');
+
+            const startMs = raceState.startTime > 0 ? raceState.startTime : Date.now();
+            const elapsed = (Date.now() - startMs) / 1000;
+            const remaining = Math.max(0, GAME_DURATION - elapsed);
+
+            if (remaining <= 0) {
+                finishSimultaneousRace();
+                return;
+            }
+
+            isPlaying = true;
+            currentScore = (currentPlayer && activeRacers[currentPlayer.id]?.score) || 0;
+            lastSyncedScore = currentScore;
+            raceState.status = 'racing';
+
+            document.getElementById('game-score').textContent = currentScore;
+            renderAllLiveViews();
+
+            // Setup motion sensor
+            if (typeof DeviceMotionEvent === 'undefined' || typeof DeviceMotionEvent.requestPermission !== 'function') {
+                window.addEventListener('devicemotion', handleDeviceMotion);
+            }
+
+            // Sync timer with master clock
+            clearInterval(gameTimerInterval);
+            gameTimerInterval = setInterval(() => {
+                const nowElapsed = (Date.now() - startMs) / 1000;
+                const rem = Math.max(0, GAME_DURATION - nowElapsed);
+
+                document.getElementById('game-timer').textContent = rem.toFixed(1);
+                document.getElementById('stage-timer').textContent = rem.toFixed(1);
+
+                if (rem <= 0) {
+                    finishSimultaneousRace();
+                }
+            }, 100);
+        }
+
+        function handleRemoteRaceStateChange(prevStatus, newStatus) {
+            updateWaitingRoomUI();
+
+            const isWaiting = currentPlayer && document.getElementById('step-waiting') && !document.getElementById('step-waiting').classList.contains('hidden');
+
+            if (newStatus === 'countdown') {
+                if (!isCountdownRunning && !isPlaying && isWaiting) {
+                    runCountdownSequence();
+                }
+            } else if (newStatus === 'racing') {
+                if (!isPlaying && isWaiting) {
+                    catchupToActiveRace();
+                }
+            } else if (newStatus === 'lobby') {
+                if (isPlaying) {
+                    finishSimultaneousRace();
+                }
+            }
+        }
+
+        function runCountdownSequence() {
+            if (isCountdownRunning) return;
+            isCountdownRunning = true;
+
+            initAudio();
+            if (typeof DeviceMotionEvent === 'undefined' || typeof DeviceMotionEvent.requestPermission !== 'function') {
+                window.addEventListener('devicemotion', handleDeviceMotion);
+            }
+
+            // Switch mobile player screen if currently waiting
+            if (currentPlayer && activeRacers[currentPlayer.id]) {
+                document.getElementById('step-waiting').classList.add('hidden');
+                document.getElementById('step-result').classList.add('hidden');
+                document.getElementById('step-playing').classList.remove('hidden');
+            }
+
+            const mobileOverlay = document.getElementById('countdown-overlay');
+            const mobileNum = document.getElementById('countdown-number');
+            const stageOverlay = document.getElementById('stage-countdown-overlay');
+            const stageNum = document.getElementById('stage-countdown-num');
+
+            mobileOverlay.classList.remove('hidden');
+            stageOverlay.classList.remove('hidden');
+
+            let count = 3;
+            mobileNum.textContent = count;
+            stageNum.textContent = count;
+            playBeep("C5", "8n");
+
+            const cdTimer = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    mobileNum.textContent = count;
+                    stageNum.textContent = count;
+                    playBeep("C5", "8n");
+                } else if (count === 0) {
+                    mobileNum.textContent = "วิ่งเลย!";
+                    stageNum.textContent = "GO!";
+                    playBeep("G5", "4n");
+                } else {
+                    clearInterval(cdTimer);
+                    isCountdownRunning = false;
+                    mobileOverlay.classList.add('hidden');
+                    stageOverlay.classList.add('hidden');
+                    beginSimultaneousRace();
+                }
+            }, 800);
+        }
+
+        function beginSimultaneousRace() {
+            isPlaying = true;
+            currentScore = 0;
+            lastSyncedScore = 0;
+            raceState.status = 'racing';
+            raceState.startTime = Date.now();
+            
+            document.getElementById('game-score').textContent = "0";
+            renderAllLiveViews();
+
+            // Simulate bot racers if any bots are in the race
+            clearInterval(botSimulationInterval);
+            botSimulationInterval = setInterval(() => {
+                if (!isPlaying) return;
+                let changed = false;
+                Object.values(activeRacers).forEach(r => {
+                    if (r.isBot) {
+                        // Random burst speed to make race exciting and competitive!
+                        const burst = Math.random() > 0.3 ? Math.ceil(Math.random() * 2) : 0;
+                        r.score += burst;
+                        changed = true;
+                    }
+                });
+                if (changed) renderAllLiveViews();
+            }, 250);
+
+            // Master 30-second countdown loop
+            clearInterval(gameTimerInterval);
+            const startMs = Date.now();
+            gameTimerInterval = setInterval(() => {
+                const elapsed = (Date.now() - startMs) / 1000;
+                const remaining = Math.max(0, GAME_DURATION - elapsed);
+                
+                document.getElementById('game-timer').textContent = remaining.toFixed(1);
+                document.getElementById('stage-timer').textContent = remaining.toFixed(1);
+
+                if (remaining <= 0) {
+                    finishSimultaneousRace();
+                }
+            }, 100);
+        }
+
+        // Accelerometer Motion Detection
+        function handleDeviceMotion(event) {
+            if (!isPlaying) return;
+            const acc = event.accelerationIncludingGravity || event.acceleration;
+            if (!acc) return;
+
+            const delta = Math.abs(acc.x - lastAccel.x) + Math.abs(acc.y - lastAccel.y) + Math.abs(acc.z - lastAccel.z);
+            lastAccel = { x: acc.x, y: acc.y, z: acc.z };
+
+            const now = Date.now();
+            if (delta > 14 && (now - lastStepTime) > 110) {
+                lastStepTime = now;
+                window.registerStep(false);
+            }
+        }
+
+        window.registerStep = function(isTap = false) {
+            if (!isPlaying) return;
+            currentScore++;
+            document.getElementById('game-score').textContent = currentScore;
+
+            if (currentScore % 5 === 0) {
+                playBeep(isTap ? "E5" : "G5", "32n");
+            }
+            updateMyLiveScoreInCloud(currentScore);
+        };
+
+        async function finishSimultaneousRace() {
+            if (!isPlaying && raceState.status === 'finished') return;
+            isPlaying = false;
+            isCountdownRunning = false;
+            clearInterval(gameTimerInterval);
+            clearInterval(botSimulationInterval);
+            window.removeEventListener('devicemotion', handleDeviceMotion);
+
+            raceState.status = 'finished';
+            raceState.adminStarted = false;
+            raceState.adminStartedAt = 0;
+            if (currentPlayer && activeRacers[currentPlayer.id]) {
+                activeRacers[currentPlayer.id].score = currentScore;
+            }
+
+            // Victory Fanfare & Confetti
+            playBeep("C5", "8n");
+            setTimeout(() => playBeep("E5", "8n"), 120);
+            setTimeout(() => playBeep("G5", "8n"), 240);
+            setTimeout(() => playBeep("C6", "2n"), 360);
+
+            if (typeof confetti === 'function') {
+                confetti({ particleCount: 90, spread: 80, origin: { y: 0.6 } });
+            }
+
+            // Record every participant's score from this heat into permanent playLogs
+            const timeStr = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const racersList = Object.values(activeRacers);
+            
+            for (let i = 0; i < racersList.length; i++) {
+                const r = racersList[i];
+                const newLog = {
+                    roundId: playLogs.length + i + 1,
+                    empId: r.empId,
+                    name: r.name,
+                    dept: r.dept,
+                    score: r.score,
+                    timestamp: timeStr
+                };
+                playLogs.push(newLog);
+
+                if (db && currentUser) {
+                    try {
+                        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'play_logs'), newLog);
+                    } catch (e) {}
+                }
+
+                // Also send log back to Google Sheets if connected and not a demo bot
+                if (googleScriptUrl && !r.isBot) {
+                    fetch(googleScriptUrl, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(newLog)
+                    }).catch(() => {});
+                }
+            }
+
+            await pushLiveRaceState();
+            renderAllLiveViews();
+            renderAdminDashboard();
+
+            // Show Result screen on Mobile if player was participating
+            if (currentPlayer && activeRacers[currentPlayer.id]) {
+                showMobileResultScreen();
+            }
+        }
+
+        // =====================================================================
+        // QR CODE & JOIN URL MANAGEMENT
+        // =====================================================================
+        let currentQRCodeInstance = null;
+
+        function getJoinUrl() {
+            const saved = localStorage.getItem('health_sprint_qr_url');
+            if (saved && saved.trim()) {
+                let url = saved.trim();
+                if (!url.includes('room=')) {
+                    url += (url.includes('?') ? '&' : '?') + 'room=' + encodeURIComponent(currentRoom);
+                }
+                if (!url.includes('view=')) {
+                    url += (url.includes('?') ? '&' : '?') + 'view=player';
+                }
+                return url;
+            }
+
+            if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
+                const base = window.location.origin + window.location.pathname;
+                return base + (base.includes('?') ? '&' : '?') + 'view=player&room=' + encodeURIComponent(currentRoom);
+            }
+            // Fallback for file:/// protocol
+            return 'http://172.31.40.49:8080/index.html?view=player&room=' + encodeURIComponent(currentRoom);
+        }
+
+        window.generateStageQRCode = function(customUrl) {
+            const container = document.getElementById('stage-qrcode-box');
+            const displayEl = document.getElementById('stage-qr-url-display');
+            if (!container) return;
+
+            const url = (customUrl || getJoinUrl()).trim();
+            if (displayEl) displayEl.textContent = url;
+            container.innerHTML = '';
+
+            try {
+                if (typeof QRCode !== 'undefined') {
+                    currentQRCodeInstance = new QRCode(container, {
+                        text: url,
+                        width: 190,
+                        height: 190,
+                        colorDark: "#0f172a",
+                        colorLight: "#ffffff",
+                        correctLevel: QRCode.CorrectLevel.M
+                    });
+                    return;
+                }
+            } catch (err) {
+                console.warn("QRCode.js instance warning:", err);
+            }
+
+            // Fallback image using online QR API
+            container.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=190x190&data=${encodeURIComponent(url)}" alt="QR Code" class="w-[190px] h-[190px] rounded-lg shadow-sm mx-auto" />`;
+        };
+
+        window.copyJoinUrl = function() {
+            const url = getJoinUrl();
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(() => {
+                    showToast("คัดลอกลิงก์เรียบร้อยแล้วค่ะ", "success");
+                }).catch(() => {
+                    prompt("คัดลอกลิงก์ด้านล่าง:", url);
+                });
+            } else {
+                prompt("คัดลอกลิงก์ด้านล่าง:", url);
+            }
+        };
+
+        window.openQrUrlModal = function() {
+            const rInput = document.getElementById('custom-room-id-input');
+            if (rInput) rInput.value = currentRoom;
+            document.getElementById('custom-qr-url-input').value = getJoinUrl();
+            document.getElementById('qr-url-modal').classList.remove('hidden');
+        };
+
+        window.closeQrUrlModal = function() {
+            document.getElementById('qr-url-modal').classList.add('hidden');
+        };
+
+        window.generateNewRandomRoom = function() {
+            const newRoom = 'booth-' + Math.floor(100 + Math.random() * 900);
+            const rInput = document.getElementById('custom-room-id-input');
+            if (rInput) rInput.value = newRoom;
+            window.setQrUrlToCurrent(newRoom);
+        };
+
+        window.setQrUrlToCurrent = function(roomOverride) {
+            const roomToUse = roomOverride || (document.getElementById('custom-room-id-input')?.value.trim()) || currentRoom;
+            if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
+                const base = window.location.origin + window.location.pathname;
+                document.getElementById('custom-qr-url-input').value = base + (base.includes('?') ? '&' : '?') + 'view=player&room=' + encodeURIComponent(roomToUse);
+            } else {
+                document.getElementById('custom-qr-url-input').value = `http://172.31.40.49:8080/index.html?view=player&room=${encodeURIComponent(roomToUse)}`;
+            }
+        };
+
+        window.setQrUrlToLanIp = function() {
+            const roomToUse = (document.getElementById('custom-room-id-input')?.value.trim()) || currentRoom;
+            document.getElementById('custom-qr-url-input').value = `http://172.31.40.49:8080/index.html?view=player&room=${encodeURIComponent(roomToUse)}`;
+        };
+
+        window.saveCustomQrUrl = function() {
+            const val = document.getElementById('custom-qr-url-input').value.trim();
+            const roomInput = document.getElementById('custom-room-id-input');
+            const newRoom = roomInput ? roomInput.value.trim().toLowerCase() : currentRoom;
+
+            if (newRoom && newRoom !== currentRoom) {
+                currentRoom = newRoom;
+                localStorage.setItem('health_sprint_room_id', currentRoom);
+                reconnectMQTTRoom(currentRoom);
+            }
+
+            if (val) {
+                localStorage.setItem('health_sprint_qr_url', val);
+            } else {
+                localStorage.removeItem('health_sprint_qr_url');
+            }
+
+            closeQrUrlModal();
+            updateRoomBadges();
+            window.generateStageQRCode();
+            showToast(`อัปเดตห้อง "${currentRoom}" และ QR Code เรียบร้อยแล้ว!`, "success");
+        };
+
+        // Reset stage and prepare next group of players
+        window.nextHeatAndReset = async function() {
+            const overlay = document.getElementById('stage-winner-overlay');
+            if (overlay) overlay.classList.add('hidden');
+            await resetCurrentRaceLobby();
+            window.generateStageQRCode();
+            showToast("ล้างสนามเรียบร้อย พร้อมรับผู้เล่นกลุ่มถัดไปแล้วค่ะ!", "success");
+        };
+
+        window.closeWinnerOverlayOnly = function() {
+            const overlay = document.getElementById('stage-winner-overlay');
+            if (overlay) overlay.classList.add('hidden');
+        };
+
+        function renderStageLobbyRacers(racers) {
+            const grid = document.getElementById('stage-lobby-racers-grid');
+            const badge = document.getElementById('stage-lobby-racer-count-badge');
+            if (!grid) return;
+            if (badge) badge.textContent = racers.length;
+
+            if (racers.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full py-8 text-center text-slate-400">
+                        <i class="fa-solid fa-qrcode text-3xl mb-2 text-slate-500 opacity-60"></i>
+                        <p class="text-xs font-bold text-slate-300">ยังไม่มีผู้เล่นสแกนเข้ารอบนี้</p>
+                        <p class="text-[11px] text-slate-500">สแกน QR Code ทางซ้ายเพื่อลงสนาม หรือกด "+ จำลอง 5 คน" เพื่อทดสอบ</p>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = '';
+            racers.forEach((r, idx) => {
+                const color = LANE_COLORS[r.colorIdx % LANE_COLORS.length];
+                grid.innerHTML += `
+                    <div class="bg-white/10 backdrop-blur border border-white/10 rounded-xl p-2.5 flex items-center gap-2.5 shadow-sm">
+                        <div class="w-10 h-10 rounded-xl bg-slate-800 text-2xl flex items-center justify-center shrink-0 border border-white/10">
+                            ${r.avatar || '🏃‍♂️'}
+                        </div>
+                        <div class="overflow-hidden text-left">
+                            <div class="flex items-center gap-1">
+                                <span class="w-2 h-2 rounded-full ${color.bg}"></span>
+                                <p class="font-bold text-xs text-white truncate max-w-[100px]">${r.name}</p>
+                            </div>
+                            <p class="text-[10px] text-slate-400 truncate max-w-[100px]">รหัส: ${r.empId} • ${r.dept}</p>
+                            <span class="inline-block mt-0.5 text-[9px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded font-semibold">
+                                ลู่ #${idx + 1} พร้อมวิ่ง 🚩
+                            </span>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function renderStageHeatWinners(sortedRacers) {
+            const grid = document.getElementById('stage-heat-podium-grid');
+            if (!grid) return;
+
+            const rankConfigs = [
+                {
+                    rank: 1,
+                    title: "อันดับ 1 (ชนะเลิศรอบนี้)",
+                    badge: "bg-gradient-to-r from-amber-400 to-yellow-300 text-slate-950 font-black",
+                    border: "border-amber-400/80 shadow-amber-500/20",
+                    icon: "👑",
+                    glow: "bg-amber-500/15"
+                },
+                {
+                    rank: 2,
+                    title: "อันดับ 2 (รองชนะเลิศ)",
+                    badge: "bg-gradient-to-r from-slate-200 to-slate-300 text-slate-900 font-black",
+                    border: "border-slate-400/60 shadow-slate-400/10",
+                    icon: "🥈",
+                    glow: "bg-slate-300/10"
+                },
+                {
+                    rank: 3,
+                    title: "อันดับ 3 (รองอันดับ 2)",
+                    badge: "bg-gradient-to-r from-orange-400 to-amber-600 text-slate-950 font-black",
+                    border: "border-orange-400/60 shadow-orange-500/10",
+                    icon: "🥉",
+                    glow: "bg-orange-500/10"
+                }
+            ];
+
+            grid.innerHTML = '';
+            rankConfigs.forEach((cfg, idx) => {
+                const winner = sortedRacers[idx];
+                if (winner) {
+                    const hasPrize = prizesAwarded[winner.empId];
+                    grid.innerHTML += `
+                        <div class="relative bg-white/10 backdrop-blur-md rounded-3xl p-5 border-2 ${cfg.border} shadow-xl flex flex-col justify-between ${cfg.glow}">
+                            <div>
+                                <div class="flex items-center justify-between mb-3">
+                                    <span class="${cfg.badge} text-xs px-3 py-1 rounded-full uppercase tracking-wider shadow">
+                                        ${cfg.icon} ${cfg.title}
+                                    </span>
+                                    <span class="text-3xl">${winner.avatar || '🏃‍♂️'}</span>
+                                </div>
+                                <h4 class="text-xl font-extrabold text-white mt-1">${winner.name}</h4>
+                                <p class="text-xs text-slate-300 mt-0.5">รหัส: <b>${winner.empId}</b> • แผนก: ${winner.dept}</p>
+                                
+                                <div class="my-4 bg-black/40 rounded-2xl p-3 border border-white/10 flex items-center justify-between">
+                                    <span class="text-xs text-slate-400">สถิติรอบนี้:</span>
+                                    <span class="text-3xl font-black text-emerald-400 font-mono">${winner.score} <span class="text-xs font-normal text-slate-300">ก้าว</span></span>
+                                </div>
+                            </div>
+
+                            <div>
+                                ${hasPrize ? `
+                                    <div class="bg-emerald-500/20 border border-emerald-400/50 rounded-2xl p-3 flex items-center justify-between">
+                                        <span class="text-xs font-bold text-emerald-300 truncate">
+                                            <i class="fa-solid fa-gift mr-1 text-emerald-400"></i> ${hasPrize.prizeName}
+                                        </span>
+                                        <button onclick="openPrizeModal('${winner.empId}', ${cfg.rank})" class="text-xs text-white/80 hover:text-white underline shrink-0 ml-2">แก้ไข</button>
+                                    </div>
+                                ` : `
+                                    <button onclick="openPrizeModal('${winner.empId}', ${cfg.rank})" class="w-full py-3 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-slate-950 rounded-xl font-black text-xs sm:text-sm shadow-lg transition transform active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer">
+                                        <i class="fa-solid fa-gift text-sm"></i> <span>มอบของรางวัล</span>
+                                    </button>
+                                `}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    grid.innerHTML += `
+                        <div class="bg-white/5 border border-white/10 rounded-3xl p-5 flex flex-col items-center justify-center text-center min-h-[220px] text-slate-500">
+                            <span class="text-4xl mb-2 opacity-40">${cfg.icon}</span>
+                            <p class="text-xs font-bold text-slate-400">${cfg.title}</p>
+                            <p class="text-[11px] mt-1 text-slate-500">ไม่มีผู้เข้าแข่งขันในอันดับนี้</p>
+                        </div>
+                    `;
+                }
+            });
+
+            // If more than 3 racers in this heat
+            const othersContainer = document.getElementById('stage-heat-others-list');
+            if (sortedRacers.length > 3) {
+                othersContainer.classList.remove('hidden');
+                let othersHtml = `
+                    <div class="bg-white/5 rounded-2xl p-3 border border-white/10 mt-2">
+                        <p class="text-xs font-bold text-slate-400 mb-2">อันดับผู้เข้าแข่งขันคนอื่นๆ ในรอบนี้:</p>
+                        <div class="flex flex-wrap gap-2">
+                `;
+                for (let i = 3; i < sortedRacers.length; i++) {
+                    const r = sortedRacers[i];
+                    othersHtml += `
+                        <span class="bg-slate-800/80 px-3 py-1 rounded-xl text-xs text-slate-300 border border-slate-700">
+                            #${i + 1} ${r.avatar} ${r.name} (${r.score} ก้าว)
+                        </span>
+                    `;
+                }
+                othersHtml += `</div></div>`;
+                othersContainer.innerHTML = othersHtml;
+            } else if (othersContainer) {
+                othersContainer.classList.add('hidden');
+            }
+        }
+
+        // =====================================================================
+        // RENDER LIVE MULTI-LANE RACE TRACK (STAGE SCREEN & MOBILE MINI TRACK)
+        // =====================================================================
+        function renderAllLiveViews() {
+            updateWaitingRoomUI();
+            const racers = Object.values(activeRacers);
+            // Sort by score descending to determine live rank (1st, 2nd, 3rd...)
+            const sortedByScore = [...racers].sort((a, b) => b.score - a.score);
+            const rankMap = {};
+            sortedByScore.forEach((r, idx) => { rankMap[r.empId] = idx + 1; });
+
+            // 1. Update Stage Header Status & View toggles
+            document.getElementById('stage-racer-count').textContent = racers.length;
+            const statusPill = document.getElementById('stage-status-pill');
+            const lobbyView = document.getElementById('stage-lobby-view');
+            const winnerOverlay = document.getElementById('stage-winner-overlay');
+
+            if (raceState.status === 'lobby') {
+                statusPill.textContent = "รอผู้เล่นลงสนาม (สแกน QR)";
+                statusPill.className = "bg-amber-500 text-slate-950 text-xs font-black px-2.5 py-0.5 rounded-full uppercase";
+                document.getElementById('stage-timer').textContent = GAME_DURATION.toFixed(1);
+
+                // Show QR code lobby, hide winner overlay
+                if (lobbyView) lobbyView.classList.remove('hidden');
+                if (winnerOverlay) winnerOverlay.classList.add('hidden');
+                renderStageLobbyRacers(racers);
+
+            } else if (raceState.status === 'countdown') {
+                statusPill.textContent = "⏳ เตรียมปล่อยตัว!";
+                statusPill.className = "bg-amber-400 text-slate-950 text-xs font-black px-2.5 py-0.5 rounded-full uppercase animate-bounce";
+
+                // Automatically hide QR code and switch to race track
+                if (lobbyView) lobbyView.classList.add('hidden');
+                if (winnerOverlay) winnerOverlay.classList.add('hidden');
+
+            } else if (raceState.status === 'racing') {
+                statusPill.textContent = "🔥 กำลังแข่งขันสด!";
+                statusPill.className = "bg-rose-500 text-white text-xs font-black px-2.5 py-0.5 rounded-full uppercase animate-pulse";
+
+                // Automatically hide QR code and switch to race track
+                if (lobbyView) lobbyView.classList.add('hidden');
+                if (winnerOverlay) winnerOverlay.classList.add('hidden');
+
+            } else if (raceState.status === 'finished') {
+                statusPill.textContent = "🏁 จบการแข่งขัน - มอบรางวัล";
+                statusPill.className = "bg-emerald-500 text-slate-950 text-xs font-black px-2.5 py-0.5 rounded-full uppercase";
+
+                // Automatically hide QR code and show Top 1-3 winner overlay
+                if (lobbyView) lobbyView.classList.add('hidden');
+                if (winnerOverlay) {
+                    winnerOverlay.classList.remove('hidden');
+                    renderStageHeatWinners(sortedByScore);
+                }
+            }
+
+            // 2. Render Big Screen Multi-Lane Race Track
+            const lanesContainer = document.getElementById('race-lanes-container');
+            if (racers.length === 0) {
+                lanesContainer.innerHTML = `
+                    <div class="text-center py-14 text-slate-400">
+                        <i class="fa-solid fa-person-running text-5xl mb-3 text-slate-300"></i>
+                        <p class="text-lg font-bold text-slate-600">ยังไม่มีผู้เล่นลงสนามในรอบนี้</p>
+                        <p class="text-xs mt-1">ให้ผู้เล่นใช้มือถือกรอกรหัสพนักงานในแท็บ <b>"มือถือผู้เล่น"</b> หรือกดปุ่ม <b>"+ จำลองผู้เล่น 5 คน"</b> ด้านบนเพื่อทดสอบ</p>
+                    </div>
+                `;
+            } else {
+                // Dynamic max target scales up if fast runners exceed 130 steps
+                const highestScore = sortedByScore[0]?.score || 0;
+                const dynamicFinish = Math.max(TARGET_STEPS_FOR_FINISH, highestScore + 10);
+
+                lanesContainer.innerHTML = '';
+                racers.forEach((r, idx) => {
+                    const color = LANE_COLORS[r.colorIdx % LANE_COLORS.length];
+                    const liveRank = rankMap[r.empId];
+                    const progressPct = Math.min(92, (r.score / dynamicFinish) * 92); // Cap at 92% so sprite stays inside finish line
+                    const rankBadge = liveRank === 1 && r.score > 0 ? '👑 #1' : liveRank === 2 && r.score > 0 ? '🥈 #2' : liveRank === 3 && r.score > 0 ? '🥉 #3' : `#${liveRank}`;
+                    const isMoving = raceState.status === 'racing';
+
+                    lanesContainer.innerHTML += `
+                        <div class="relative ${color.light} border-2 ${color.border} rounded-2xl p-2.5 sm:p-3 flex items-center overflow-hidden shadow-sm">
+                            <!-- Lane Number & Runner Info -->
+                            <div class="w-36 sm:w-48 shrink-0 z-10 pr-2 border-r border-slate-200/80">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="bg-slate-800 text-white text-[10px] font-black px-1.5 py-0.5 rounded">${rankBadge}</span>
+                                    <span class="font-bold text-xs sm:text-sm text-slate-800 truncate">${r.name}</span>
+                                </div>
+                                <div class="flex items-center justify-between text-[11px] text-slate-500 mt-0.5">
+                                    <span class="truncate max-w-[95px]">${r.dept}</span>
+                                    <span class="font-black ${color.text} text-xs sm:text-sm">${r.score} ก้าว</span>
+                                </div>
+                            </div>
+
+                            <!-- Running Track Area -->
+                            <div class="flex-1 relative h-12 sm:h-14 flex items-center mx-2">
+                                <!-- Track Progress Bar -->
+                                <div class="w-full h-3 bg-white/80 rounded-full overflow-hidden border border-slate-200/60">
+                                    <div class="h-full ${color.bg} transition-all duration-200" style="width: ${progressPct}%"></div>
+                                </div>
+
+                                <!-- Moving Runner Character Sprite -->
+                                <div class="runner-sprite ${isMoving ? 'runner-active' : ''} absolute top-1/2 -translate-y-1/2 text-3xl sm:text-4xl drop-shadow-md z-20"
+                                     style="left: ${progressPct}%;">
+                                    ${r.avatar || '🏃‍♂️'}
+                                </div>
+                            </div>
+
+                            <!-- Finish Line Strip -->
+                            <div class="w-4 sm:w-6 h-12 sm:h-14 finish-line rounded-lg border border-slate-300 shrink-0"></div>
+                        </div>
+                    `;
+                });
+            }
+
+            // 3. Update Mobile Waiting Room List
+            document.getElementById('waiting-total-racers').textContent = racers.length;
+            const waitingList = document.getElementById('waiting-racers-list');
+            waitingList.innerHTML = '';
+            racers.forEach((r, idx) => {
+                const isMe = currentPlayer && r.empId === currentPlayer.id;
+                waitingList.innerHTML += `
+                    <div class="flex items-center justify-between px-3 py-1.5 rounded-xl text-xs ${isMe ? 'bg-emerald-100 font-bold text-emerald-900' : 'bg-white text-slate-700'} border border-slate-100">
+                        <span>${r.avatar} ${r.name} ${isMe ? '(คุณ)' : ''}</span>
+                        <span class="text-[10px] text-slate-400">${r.dept}</span>
+                    </div>
+                `;
+            });
+
+            // 4. Update Mobile Mini Race Track (During Active Gameplay)
+            if (currentPlayer && rankMap[currentPlayer.id]) {
+                document.getElementById('mobile-live-rank').textContent = `ที่ #${rankMap[currentPlayer.id]} / ${racers.length}`;
+            }
+            const mobileMiniLanes = document.getElementById('mobile-mini-lanes');
+            const highestScore = sortedByScore[0]?.score || 0;
+            const dynamicFinish = Math.max(TARGET_STEPS_FOR_FINISH, highestScore + 10);
+
+            mobileMiniLanes.innerHTML = '';
+            sortedByScore.forEach((r, idx) => {
+                const isMe = currentPlayer && r.empId === currentPlayer.id;
+                const pct = Math.min(95, (r.score / dynamicFinish) * 95);
+                mobileMiniLanes.innerHTML += `
+                    <div class="relative bg-white rounded-xl p-1.5 border ${isMe ? 'border-emerald-400 ring-1 ring-emerald-300' : 'border-slate-200'}">
+                        <div class="flex justify-between text-[10px] font-bold mb-1">
+                            <span class="truncate max-w-[160px] ${isMe ? 'text-emerald-700' : 'text-slate-700'}">
+                                #${idx + 1} ${r.avatar} ${r.name} ${isMe ? '(คุณ)' : ''}
+                            </span>
+                            <span class="text-slate-600">${r.score}</span>
+                        </div>
+                        <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div class="h-full ${isMe ? 'bg-emerald-500' : 'bg-sky-400'} transition-all duration-150" style="width: ${pct}%"></div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function showMobileResultScreen() {
+            document.getElementById('step-playing').classList.add('hidden');
+            document.getElementById('step-result').classList.remove('hidden');
+
+            const racers = Object.values(activeRacers).sort((a, b) => b.score - a.score);
+            const heatRank = racers.findIndex(r => r.empId === currentPlayer.id) + 1;
+
+            const standings = getAggregatedStandings();
+            const myOverall = standings.find(s => s.empId === currentPlayer.id);
+
+            document.getElementById('result-heat-badge').textContent = `เข้าเส้นชัยอันดับที่ #${heatRank} ของรอบนี้ (จาก ${racers.length} คน)`;
+            document.getElementById('result-player-name').textContent = `${currentPlayer.name} (${currentPlayer.id})`;
+            document.getElementById('result-player-dept').textContent = currentPlayer.dept;
+            document.getElementById('result-score').textContent = currentScore;
+            document.getElementById('result-kcal').textContent = (currentScore * 0.045).toFixed(1);
+            document.getElementById('result-rounds').textContent = myOverall ? myOverall.rounds : 1;
+
+            const rankBanner = document.getElementById('result-rank-banner');
+            const rankText = document.getElementById('result-rank-text');
+            if (myOverall && myOverall.rank <= 3) {
+                rankBanner.className = "bg-amber-50 border-2 border-amber-400 rounded-2xl p-3 mb-4";
+                rankText.innerHTML = `🎉 สุดยอด! คะแนนรวมทั้งงานคุณติด <span class="text-base font-black text-amber-600">Top #${myOverall.rank}</span> (สถิติสูงสุด: ${myOverall.bestScore})`;
+            } else {
+                rankBanner.className = "bg-slate-50 border border-slate-200 rounded-2xl p-3 mb-4";
+                rankText.innerHTML = `อันดับรวมทั้งงานของคุณ: <b>#${myOverall ? myOverall.rank : '-'}</b> (สถิติสูงสุด: ${myOverall ? myOverall.bestScore : currentScore})`;
+            }
+        }
+
+        window.playAgainSameUser = function() {
+            joinRaceLobby();
+        };
+
+        window.resetToNewPlayer = function() {
+            currentPlayer = null;
+            document.getElementById('emp-id-input').value = '';
+            document.getElementById('new-emp-name').value = '';
+            document.getElementById('new-emp-dept').value = '';
+            document.getElementById('emp-info-card').classList.add('hidden');
+            document.getElementById('emp-not-found-box').classList.add('hidden');
+            disableStartButton("กรอกรหัสพนักงานเพื่อลงสนาม");
+
+            document.getElementById('step-result').classList.add('hidden');
+            document.getElementById('step-waiting').classList.add('hidden');
+            document.getElementById('step-checkin').classList.remove('hidden');
+            updateWaitingRoomUI();
+        };
+
+        // =====================================================================
+        // ADMIN DASHBOARD, LEADERBOARD & PRIZES
+        // =====================================================================
+        function getAggregatedStandings() {
+            const map = {};
+            playLogs.forEach(log => {
+                if (!map[log.empId]) {
+                    map[log.empId] = {
+                        empId: log.empId,
+                        name: log.name,
+                        dept: log.dept,
+                        rounds: 0,
+                        bestScore: 0
+                    };
+                }
+                map[log.empId].rounds += 1;
+                if (log.score > map[log.empId].bestScore) {
+                    map[log.empId].bestScore = log.score;
+                }
+            });
+
+            const list = Object.values(map).sort((a, b) => b.bestScore - a.bestScore);
+            list.forEach((item, index) => {
+                item.rank = index + 1;
+                item.prize = prizesAwarded[item.empId] || null;
+            });
+            return list;
+        }
+
+        window.renderAdminDashboard = function() {
+            const standings = getAggregatedStandings();
+            const searchQuery = document.getElementById('admin-search').value.trim().toLowerCase();
+
+            document.getElementById('stat-unique-players').textContent = standings.length;
+            document.getElementById('stat-total-rounds').textContent = playLogs.length;
+            document.getElementById('db-count').textContent = Object.keys(employeeDB).length;
+            
+            const awardedCount = Object.keys(prizesAwarded).length;
+            document.getElementById('stat-prizes-given').innerHTML = `${awardedCount} <span class="text-xs font-normal text-slate-400">/ 3</span>`;
+
+            // Top 3 Podium
+            const podiumGrid = document.getElementById('top3-podium-grid');
+            podiumGrid.innerHTML = '';
+            const rankStyles = [
+                { rank: 1, title: "อันดับ 1 (ชนะเลิศ)", badge: "bg-amber-400 text-slate-900", border: "border-amber-400/50", icon: "👑" },
+                { rank: 2, title: "อันดับ 2 (รองชนะเลิศอันดับ 1)", badge: "bg-slate-300 text-slate-900", border: "border-slate-400/40", icon: "🥈" },
+                { rank: 3, title: "อันดับ 3 (รองชนะเลิศอันดับ 2)", badge: "bg-orange-400 text-slate-900", border: "border-orange-400/40", icon: "🥉" }
+            ];
+
+            rankStyles.forEach((style, idx) => {
+                const winner = standings[idx];
+                if (winner) {
+                    const hasPrize = prizesAwarded[winner.empId];
+                    podiumGrid.innerHTML += `
+                        <div class="bg-white/10 backdrop-blur border ${style.border} rounded-2xl p-4 flex flex-col justify-between">
+                            <div>
+                                <div class="flex justify-between items-center mb-3">
+                                    <span class="${style.badge} text-xs font-extrabold px-2.5 py-1 rounded-lg">
+                                        ${style.icon} ${style.title}
+                                    </span>
+                                    <span class="text-xs text-slate-300">เล่น ${winner.rounds} รอบ</span>
+                                </div>
+                                <h4 class="text-lg font-bold text-white">${winner.name}</h4>
+                                <p class="text-xs text-slate-300">รหัส: ${winner.empId} • ${winner.dept}</p>
+                                <div class="my-3 bg-black/30 rounded-xl p-2.5 flex justify-between items-center">
+                                    <span class="text-xs text-slate-400">คะแนนสูงสุด:</span>
+                                    <span class="text-2xl font-black text-emerald-400">${winner.bestScore}</span>
+                                </div>
+                            </div>
+                            <div>
+                                ${hasPrize ? `
+                                    <div class="bg-emerald-500/20 border border-emerald-400/40 rounded-xl p-2.5 text-xs flex items-center justify-between">
+                                        <span class="text-emerald-300 font-semibold truncate"><i class="fa-solid fa-check-circle mr-1"></i> ${hasPrize.prizeName}</span>
+                                        <button onclick="openPrizeModal('${winner.empId}', ${style.rank})" class="text-white/70 hover:text-white underline ml-2 shrink-0">แก้ไข</button>
+                                    </div>
+                                ` : `
+                                    <button onclick="openPrizeModal('${winner.empId}', ${style.rank})" class="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs rounded-xl transition shadow-md">
+                                        <i class="fa-solid fa-gift mr-1"></i> บันทึกการมอบรางวัล
+                                    </button>
+                                `}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    podiumGrid.innerHTML += `
+                        <div class="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col items-center justify-center text-center min-h-[180px] text-slate-500">
+                            <span class="text-2xl mb-1 opacity-50">${style.icon}</span>
+                            <p class="text-xs font-bold">${style.title}</p>
+                            <p class="text-[11px] mt-1">ยังไม่มีผู้เข้าแข่งขันในอันดับนี้</p>
+                        </div>
+                    `;
+                }
+            });
+
+            // Participants Summary Table
+            const tbody = document.getElementById('participants-table-body');
+            tbody.innerHTML = '';
+            const filtered = standings.filter(p => 
+                p.empId.toLowerCase().includes(searchQuery) ||
+                p.name.toLowerCase().includes(searchQuery) ||
+                p.dept.toLowerCase().includes(searchQuery)
+            );
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-400 text-xs">ยังไม่มีข้อมูลผู้เล่นในขณะนี้</td></tr>`;
+            } else {
+                filtered.forEach(p => {
+                    const rankBadge = p.rank === 1 ? '🥇 #1' : p.rank === 2 ? '🥈 #2' : p.rank === 3 ? '🥉 #3' : `#${p.rank}`;
+                    const prizeInfo = prizesAwarded[p.empId];
+                    
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-50 transition">
+                            <td class="py-3 px-4 font-extrabold ${p.rank <= 3 ? 'text-amber-600' : 'text-slate-500'}">${rankBadge}</td>
+                            <td class="py-3 px-4 font-mono font-bold text-slate-700">${p.empId}</td>
+                            <td class="py-3 px-4 font-semibold text-slate-800">${p.name}</td>
+                            <td class="py-3 px-4 text-slate-600 text-xs">${p.dept}</td>
+                            <td class="py-3 px-4 text-center">
+                                <span class="bg-blue-50 text-blue-700 font-bold text-xs px-2.5 py-1 rounded-full">${p.rounds} รอบ</span>
+                            </td>
+                            <td class="py-3 px-4 text-right font-black text-emerald-600 text-base">${p.bestScore}</td>
+                            <td class="py-3 px-4">
+                                ${prizeInfo 
+                                    ? `<span class="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-1 rounded-lg"><i class="fa-solid fa-gift"></i> ${prizeInfo.prizeName}</span>` 
+                                    : (p.rank <= 3 
+                                        ? `<button onclick="openPrizeModal('${p.empId}', ${p.rank})" class="text-xs text-amber-600 hover:underline font-semibold">+ รอมอบรางวัล</button>`
+                                        : `<span class="text-xs text-slate-400">-</span>`)}
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            // Chronological Round Logs
+            document.getElementById('log-total-count').textContent = playLogs.length;
+            const logList = document.getElementById('round-history-list');
+            logList.innerHTML = '';
+            if (playLogs.length === 0) {
+                logList.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">ยังไม่มีประวัติการเล่น</p>`;
+            } else {
+                [...playLogs].reverse().forEach(log => {
+                    logList.innerHTML += `
+                        <div class="flex items-center justify-between bg-slate-50 px-3.5 py-2 rounded-xl text-xs border border-slate-100">
+                            <div class="flex items-center gap-2.5">
+                                <span class="bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded text-[10px]">รอบที่ #${log.roundId}</span>
+                                <span class="font-bold text-slate-800">${log.name}</span>
+                                <span class="text-slate-400">(${log.empId} • ${log.dept})</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="font-extrabold text-emerald-600">${log.score} คะแนน</span>
+                                <span class="text-[11px] text-slate-400">${log.timestamp}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+        };
+
+        // Prize Modal Functions
+        window.openPrizeModal = function(empId, rank) {
+            const standings = getAggregatedStandings();
+            let winner = standings.find(s => s.empId === empId);
+            if (!winner && activeRacers[empId]) {
+                winner = {
+                    empId: empId,
+                    name: activeRacers[empId].name,
+                    dept: activeRacers[empId].dept,
+                    bestScore: activeRacers[empId].score
+                };
+            }
+            if (!winner) {
+                const lastLog = [...playLogs].reverse().find(l => l.empId === empId);
+                if (lastLog) {
+                    winner = {
+                        empId: empId,
+                        name: lastLog.name,
+                        dept: lastLog.dept,
+                        bestScore: lastLog.score
+                    };
+                }
+            }
+            if (!winner) return;
+
+            selectedWinnerForPrize = { empId, rank };
+            document.getElementById('modal-winner-rank').textContent = `ผู้ชนะอันดับที่ ${rank}`;
+            document.getElementById('modal-winner-name').textContent = `${winner.name} (${winner.empId})`;
+            document.getElementById('modal-winner-dept').textContent = `${winner.dept} • คะแนน: ${winner.bestScore || 0}`;
+            
+            const existing = prizesAwarded[empId];
+            document.getElementById('prize-name-input').value = existing ? existing.prizeName : `รางวัลอันดับที่ ${rank}`;
+            document.getElementById('prize-modal').classList.remove('hidden');
+        };
+
+        window.closePrizeModal = function() {
+            document.getElementById('prize-modal').classList.add('hidden');
+            selectedWinnerForPrize = null;
+        };
+
+        window.savePrizeAssignment = async function() {
+            if (!selectedWinnerForPrize) return;
+            const prizeName = document.getElementById('prize-name-input').value.trim();
+            if (!prizeName) {
+                showToast("กรุณาระบุชื่อรางวัลค่ะ", "warning");
+                return;
+            }
+            const prizeData = {
+                rank: selectedWinnerForPrize.rank,
+                prizeName: prizeName,
+                awardedAt: new Date().toLocaleTimeString('th-TH')
+            };
+            prizesAwarded[selectedWinnerForPrize.empId] = prizeData;
+
+            broadcastSyncMessage({
+                type: 'PRIZE_AWARD',
+                empId: selectedWinnerForPrize.empId,
+                prizeData: prizeData
+            });
+
+            if (db && currentUser) {
+                try {
+                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'prizes', selectedWinnerForPrize.empId), prizeData);
+                } catch (e) {}
+            }
+
+            closePrizeModal();
+            renderAdminDashboard();
+            renderAllLiveViews();
+            showToast("บันทึกการมอบรางวัลเรียบร้อยแล้ว!", "success");
+        };
+
+        // Employee DB Modal Functions
+        window.openEmployeeModal = function() {
+            renderEmployeeDBList();
+            document.getElementById('employee-db-modal').classList.remove('hidden');
+        };
+
+        window.closeEmployeeModal = function() {
+            document.getElementById('employee-db-modal').classList.add('hidden');
+        };
+
+        function renderEmployeeDBList() {
+            const listEl = document.getElementById('emp-db-list');
+            listEl.innerHTML = '';
+            Object.values(employeeDB).forEach(emp => {
+                listEl.innerHTML += `
+                    <div class="p-2.5 flex justify-between items-center">
+                        <div>
+                            <span class="font-mono font-bold text-emerald-700 mr-2">${emp.id}</span>
+                            <span class="font-semibold text-slate-800">${emp.name}</span>
+                        </div>
+                        <span class="text-slate-500">${emp.dept}</span>
+                    </div>
+                `;
+            });
+        }
+
+        window.bulkAddEmployees = function() {
+            const raw = document.getElementById('bulk-emp-input').value.trim();
+            if (!raw) return;
+
+            const lines = raw.split('\n');
+            let addedCount = 0;
+            lines.forEach(line => {
+                const parts = line.split(',').map(s => s.trim());
+                if (parts.length >= 3 && parts[0]) {
+                    const id = parts[0].toUpperCase();
+                    employeeDB[id] = { id: id, name: parts[1], dept: parts[2] };
+                    addedCount++;
+                }
+            });
+
+            document.getElementById('bulk-emp-input').value = '';
+            renderEmployeeDBList();
+            renderAdminDashboard();
+            showToast(`เพิ่มข้อมูลพนักงานสำเร็จ ${addedCount} รายการ`, "success");
+        };
+
+        // Sync Employee Database directly from Google Apps Script Web App URL
+        window.syncFromGoogleSheets = async function() {
+            const urlInput = document.getElementById('gs-url-input').value.trim();
+            const statusEl = document.getElementById('gs-sync-status');
+            const btn = document.getElementById('btn-sync-gs');
+
+            if (!urlInput || !urlInput.startsWith("https://script.google.com/")) {
+                showToast("กรุณาวางลิงก์ Google Apps Script Web App URL ให้ถูกต้องค่ะ", "warning");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> กำลังดึง...`;
+            statusEl.classList.remove('hidden');
+            statusEl.textContent = "กำลังเชื่อมต่อกับ Google Sheets...";
+
+            const loadedCount = await fetchEmployeesFromGS(urlInput, false);
+
+            if (loadedCount !== false) {
+                googleScriptUrl = urlInput;
+                // Save URL to Firestore so all booth devices automatically know the GS URL
+                if (db && currentUser) {
+                    try {
+                        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'gs_config'), { url: urlInput });
+                    } catch (e) {}
+                }
+
+                renderEmployeeDBList();
+                statusEl.textContent = `✅ เชื่อมต่อสำเร็จ! ดึงรายชื่อพนักงานเข้าสู่ระบบแล้ว ${loadedCount} คน`;
+                showToast(`ดึงข้อมูลพนักงานจาก Google Sheets สำเร็จ ${loadedCount} คน!`, "success");
+            } else {
+                statusEl.textContent = "❌ ไม่สามารถดึงข้อมูลได้ กรุณาตรวจสอบว่า Deploy Web App ตั้งค่าสิทธิ์เป็น 'ทุกคน (Anyone)'";
+                showToast("เชื่อมต่อ Google Sheets ไม่สำเร็จ กรุณาเช็กสิทธิ์การ Deploy ค่ะ", "warning");
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-down"></i> ดึงข้อมูล`;
+        };
+
+        // Initialize Real-time Cross-Device Sync & QR Code on Load
+        initMQTTSync();
+        updateRoomBadges();
+        initFirebaseSync();
+        updateWaitingRoomUI();
+        if (window.generateStageQRCode) window.generateStageQRCode();
+
+        // Check URL View Parameter on startup (Player mobile vs Big Stage vs Admin)
+        const urlParams = new URLSearchParams(window.location.search);
+        const reqView = urlParams.get('view');
+        if (reqView === 'player' || reqView === 'stage' || reqView === 'admin') {
+            switchView(reqView);
+        } else if (window.innerWidth < 768) {
+            switchView('player');
+        } else {
+            switchView('stage');
+        }
+    </script>
+</body>
+</html>
