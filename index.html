@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Health Sprint Live Race - เกมวิ่งแข่งออกบูธสุขภาพ</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -257,16 +257,24 @@
                 </div>
             </div>
 
-            <!-- 3-Mode View Switcher (Chunky rounded pill style) -->
-            <div class="flex bg-slate-100/90 p-1.5 rounded-full border border-slate-200/80 shadow-inner">
-                <button id="btn-view-player" onclick="switchView('player')" class="px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-extrabold transition-all bg-white text-teal-700 shadow-sm flex items-center gap-1.5">
-                    <i class="fa-solid fa-mobile-screen-button"></i> <span>มือถือผู้เล่น</span>
-                </button>
-                <button id="btn-view-stage" onclick="switchView('stage')" class="px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-extrabold transition-all text-slate-600 hover:text-slate-900 flex items-center gap-1.5">
-                    <i class="fa-solid fa-tv text-teal-600"></i> <span>จอแข่งรวม (Live)</span>
-                </button>
-                <button id="btn-view-admin" onclick="switchView('admin')" class="px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-extrabold transition-all text-slate-600 hover:text-slate-900 flex items-center gap-1.5">
-                    <i class="fa-solid fa-trophy text-amber-500"></i> <span>สรุปผล & รางวัล</span>
+            <!-- 3-Mode View Switcher (Chunky rounded pill style, responsive for Mobile / iPad / PC) -->
+            <div class="flex items-center gap-1.5 sm:gap-2">
+                <div class="flex bg-slate-100/90 p-1 sm:p-1.5 rounded-full border border-slate-200/80 shadow-inner">
+                    <button id="btn-view-player" onclick="switchView('player')" class="px-2.5 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-extrabold transition-all bg-white text-teal-700 shadow-sm flex items-center gap-1.5">
+                        <i class="fa-solid fa-mobile-screen-button"></i> <span class="hidden sm:inline">มือถือผู้เล่น</span><span class="sm:hidden">มือถือ</span>
+                    </button>
+                    <button id="btn-view-stage" onclick="switchView('stage')" class="px-2.5 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-extrabold transition-all text-slate-600 hover:text-slate-900 flex items-center gap-1.5" title="เฉพาะแอดมิน (ใส่รหัส ad2026)">
+                        <i class="fa-solid fa-tv text-teal-600"></i> <span class="hidden sm:inline">จอแข่งรวม (Live)</span><span class="sm:hidden">จอใหญ่</span>
+                        <i id="nav-stage-lock" class="fa-solid fa-lock text-[10px] text-amber-500 ml-0.5"></i>
+                    </button>
+                    <button id="btn-view-admin" onclick="switchView('admin')" class="px-2.5 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-extrabold transition-all text-slate-600 hover:text-slate-900 flex items-center gap-1.5" title="เฉพาะแอดมิน (ใส่รหัส ad2026)">
+                        <i class="fa-solid fa-trophy text-amber-500"></i> <span class="hidden sm:inline">สรุปผล & รางวัล</span><span class="sm:hidden">สรุปผล</span>
+                        <i id="nav-admin-lock" class="fa-solid fa-lock text-[10px] text-amber-500 ml-0.5"></i>
+                    </button>
+                </div>
+                <!-- Admin Logout / Lock Button (Visible only when unlocked) -->
+                <button id="btn-admin-logout" onclick="logoutAdmin()" class="hidden px-2.5 sm:px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-full text-xs font-black transition flex items-center gap-1 shadow-xs cursor-pointer" title="ออกจากสิทธิ์แอดมิน (ล็อกหน้าจอ)">
+                    <i class="fa-solid fa-lock"></i> <span class="hidden md:inline">ล็อกสิทธิ์</span>
                 </button>
             </div>
         </div>
@@ -306,39 +314,44 @@
             </div>
 
             <!-- Timer & Race Controls -->
-            <div class="flex flex-wrap items-center justify-center gap-3">
+            <div class="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
                 <!-- Big Digital Timer (Toy Clock Style) -->
-                <div class="bg-white text-slate-800 border-4 border-amber-300 px-5 py-2 rounded-3xl text-center min-w-[130px] shadow-lg">
+                <div class="bg-white text-slate-800 border-4 border-amber-300 px-4 sm:px-5 py-2 rounded-3xl text-center min-w-[120px] sm:min-w-[130px] shadow-lg">
                     <p class="text-[10px] text-amber-800 uppercase font-extrabold flex items-center justify-center gap-1">
                         <i class="fa-regular fa-clock text-amber-500"></i> เวลาที่เหลือ
                     </p>
                     <p id="stage-timer" class="text-3xl sm:text-4xl font-black text-rose-500 font-mono tracking-tight leading-none">30.0</p>
                 </div>
 
+                <!-- Fullscreen Toggle Button for PC/Notebook/Projector -->
+                <button id="btn-stage-fullscreen" onclick="toggleFullScreen()" class="btn-clay-white text-slate-700 px-3.5 py-3 text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-sm" title="สลับเต็มจอสำหรับต่อโปรเจกเตอร์หรือทีวี">
+                    <i class="fa-solid fa-expand text-teal-600"></i> <span class="hidden sm:inline">เต็มจอ</span>
+                </button>
+
                 <!-- Demo Bots Button -->
-                <button id="btn-add-bots" onclick="addDemoRacersToLobby()" class="btn-clay-white text-slate-700 px-4 py-3 text-xs font-black flex items-center gap-1.5 cursor-pointer">
-                    <i class="fa-solid fa-users-viewfinder text-teal-600"></i> + จำลอง 5 คน
+                <button id="btn-add-bots" onclick="addDemoRacersToLobby()" class="btn-clay-white text-slate-700 px-3.5 sm:px-4 py-3 text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-sm">
+                    <i class="fa-solid fa-users-viewfinder text-teal-600"></i> <span class="hidden sm:inline">+ จำลอง 5 คน</span><span class="sm:hidden">+ 5 บอท</span>
                 </button>
 
                 <!-- Main Start Race Button (Admin Start) -->
-                <button id="btn-stage-start" onclick="triggerStartRace()" class="btn-clay-yellow px-7 py-3.5 text-base sm:text-lg font-black flex items-center gap-2 cursor-pointer shadow-xl">
+                <button id="btn-stage-start" onclick="triggerStartRace()" class="btn-clay-yellow px-6 sm:px-7 py-3.5 text-base sm:text-lg font-black flex items-center gap-2 cursor-pointer shadow-xl">
                     <span class="bg-amber-950/15 px-2 py-0.5 rounded-full text-xs font-bold uppercase">แอดมิน</span>
                     <i class="fa-solid fa-play"></i> <span>ปล่อยตัวพร้อมกัน!</span>
                 </button>
 
                 <!-- Reset Button -->
-                <button id="btn-stage-reset" onclick="resetCurrentRaceLobby()" class="btn-clay-coral px-4 py-3.5 text-xs font-black flex items-center gap-1.5 cursor-pointer">
+                <button id="btn-stage-reset" onclick="resetCurrentRaceLobby()" class="btn-clay-coral px-3.5 sm:px-4 py-3.5 text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-sm">
                     <i class="fa-solid fa-rotate-left"></i> ล้างสนาม
                 </button>
             </div>
         </div>
 
-        <!-- LOBBY & QR CODE CHECK-IN SECTION (Visible during lobby) -->
-        <div id="stage-lobby-view" class="clay-card-warm p-5 sm:p-7 border-4 border-white shadow-xl transition-all">
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        <!-- LOBBY & QR CODE CHECK-IN SECTION (Visible during lobby - Responsive for Mobile / iPad / PC) -->
+        <div id="stage-lobby-view" class="clay-card-warm p-4 sm:p-7 border-4 border-white shadow-xl transition-all">
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-5 sm:gap-6 items-center">
                 
-                <!-- Left: Big Prominent QR Code Card (5 cols) -->
-                <div class="lg:col-span-5 bg-white text-slate-800 rounded-3xl p-5 shadow-xl border-4 border-teal-300 flex flex-col items-center text-center relative overflow-hidden">
+                <!-- Left: Big Prominent QR Code Card (5 cols on iPad/PC) -->
+                <div class="md:col-span-5 bg-white text-slate-800 rounded-3xl p-4 sm:p-5 shadow-xl border-4 border-teal-300 flex flex-col items-center text-center relative overflow-hidden">
                     <div class="bg-gradient-to-r from-teal-500 to-emerald-500 text-white font-black text-xs px-4 py-1.5 rounded-full shadow-sm flex items-center justify-between w-full mb-2">
                         <span class="flex items-center gap-1.5"><i class="fa-solid fa-qrcode"></i> สแกนเข้าแข่งรอบนี้</span>
                         <span class="bg-white/25 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold">ห้อง: <span id="stage-room-badge">booth-1</span></span>
@@ -369,8 +382,8 @@
                     </div>
                 </div>
 
-                <!-- Right: Live Joined Racers at the Starting Line (7 cols) -->
-                <div class="lg:col-span-7 flex flex-col justify-between h-full space-y-3">
+                <!-- Right: Live Joined Racers at the Starting Line (7 cols on iPad/PC) -->
+                <div class="md:col-span-7 flex flex-col justify-between h-full space-y-3">
                     <div>
                         <div class="flex items-center justify-between pb-2 border-b-2 border-amber-200/60">
                             <div class="flex items-center gap-2">
@@ -456,8 +469,8 @@
                 <span class="flex items-center gap-1.5"><span class="text-base">🏁</span> เส้นชัย (FINISH)</span>
             </div>
 
-            <!-- Lanes Container (Dynamically renders 1 lane per participant in current race) -->
-            <div id="race-lanes-container" class="flex-1 flex flex-col justify-center space-y-3 my-3 relative">
+            <!-- Lanes Container (Dynamically renders 1 lane per participant in current race, scrollable on iPad/Laptop) -->
+            <div id="race-lanes-container" class="flex-1 flex flex-col justify-center space-y-3 my-3 relative overflow-y-auto max-h-[60vh] pr-1">
                 <!-- Empty State -->
                 <div class="text-center py-16 text-slate-400">
                     <i class="fa-solid fa-person-running text-5xl mb-3 text-slate-300"></i>
@@ -505,8 +518,9 @@
                     <!-- Search Pill Bar (Exact style from user reference image!) -->
                     <div class="clay-pill-bar flex items-center bg-white rounded-full p-1.5 pl-4 shadow-lg border-2 border-amber-100">
                         <span class="text-xl mr-2 animate-bounce">✨</span>
-                        <input type="text" id="emp-id-input" placeholder="กรอกรหัสพนักงาน เช่น 1001..." 
+                        <input type="text" id="emp-id-input" placeholder="กรอกรหัสพนักงาน เช่น 1001 หรือ 084843..." 
                             oninput="lookupEmployee(this.value)"
+                            autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" inputmode="text"
                             class="flex-1 bg-transparent text-slate-800 font-extrabold text-base focus:outline-none placeholder-slate-400 uppercase">
                         <button id="btn-start-game" onclick="joinRaceLobby()" disabled
                             class="px-5 py-2.5 rounded-full font-extrabold text-xs text-slate-400 bg-slate-200 cursor-not-allowed shrink-0 transition flex items-center gap-1.5">
@@ -551,8 +565,8 @@
                         <i class="fa-solid fa-circle-exclamation"></i>
                         <span>ไม่พบรหัสนี้ในระบบ กรุณากรอกชื่อและแผนกเพิ่มเติม</span>
                     </div>
-                    <input type="text" id="new-emp-name" placeholder="ชื่อ - นามสกุล" class="w-full px-4 py-2.5 bg-white border border-amber-300 rounded-2xl text-sm font-bold focus:outline-none focus:border-teal-500">
-                    <input type="text" id="new-emp-dept" placeholder="แผนก / ฝ่าย (เช่น HR, IT, ผลิต)" class="w-full px-4 py-2.5 bg-white border border-amber-300 rounded-2xl text-sm font-bold focus:outline-none focus:border-teal-500">
+                    <input type="text" id="new-emp-name" placeholder="ชื่อ - นามสกุล" autocapitalize="words" autocomplete="off" autocorrect="off" spellcheck="false" class="w-full px-4 py-2.5 bg-white border border-amber-300 rounded-2xl text-sm font-bold focus:outline-none focus:border-teal-500">
+                    <input type="text" id="new-emp-dept" placeholder="แผนก / ฝ่าย (เช่น HR, IT, ผลิต)" autocapitalize="words" autocomplete="off" autocorrect="off" spellcheck="false" class="w-full px-4 py-2.5 bg-white border border-amber-300 rounded-2xl text-sm font-bold focus:outline-none focus:border-teal-500">
                 </div>
 
                 <!-- Choose Runner Avatar (8 cute characters) -->
@@ -955,6 +969,22 @@
                     </button>
                 </div>
                 <p id="gs-sync-status" class="text-[11px] text-teal-700 mt-1 hidden"></p>
+                <details class="mt-2 text-[11px] text-teal-900 bg-white/80 p-2.5 rounded-xl border border-teal-200 cursor-pointer">
+                    <summary class="font-bold flex items-center justify-between text-teal-800">
+                        <span><i class="fa-solid fa-code mr-1"></i> โค้ด Google Apps Script (ล็อกเลข 0 นำหน้าไม่ให้หาย)</span>
+                        <span class="text-[10px] text-teal-600 underline">กดดูโค้ด</span>
+                    </summary>
+                    <div class="mt-2 text-left font-mono text-[10px] bg-slate-900 text-teal-300 p-2.5 rounded-xl overflow-x-auto select-all leading-relaxed">
+function doPost(e) {<br>
+&nbsp;&nbsp;var d = JSON.parse(e.postData.contents);<br>
+&nbsp;&nbsp;var s = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();<br>
+&nbsp;&nbsp;// ใส่ ' นำหน้าเพื่อให้ Google Sheets บันทึกเป็นข้อความ (รักษาเลข 0 ข้างหน้า)<br>
+&nbsp;&nbsp;var empId = "'" + String(d.empIdRaw || d.empId || '').replace(/^'/, '');<br>
+&nbsp;&nbsp;s.appendRow([new Date(), empId, d.name, d.dept, d.score]);<br>
+&nbsp;&nbsp;return ContentService.createTextOutput(JSON.stringify({status:'success'})).setMimeType(ContentService.MimeType.JSON);<br>
+}
+                    </div>
+                </details>
             </div>
 
             <div class="bg-slate-50 p-3.5 rounded-2xl border-2 border-slate-200 mb-3">
@@ -1041,6 +1071,37 @@
                 <button onclick="closeQrUrlModal()" class="btn-clay-white py-2.5 text-xs font-bold cursor-pointer">ยกเลิก</button>
                 <button onclick="saveCustomQrUrl()" class="btn-clay-teal py-2.5 text-xs font-black shadow-md cursor-pointer">บันทึก & สร้าง QR ใหม่</button>
             </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL: ADMIN ACCESS AUTHENTICATION (PASSWORD PROTECTED: ad2026)       -->
+    <!-- ===================================================================== -->
+    <div id="admin-auth-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="clay-card max-w-sm w-full p-6 sm:p-7 border-4 border-white shadow-2xl text-center">
+            <div class="w-16 h-16 bg-amber-100 text-amber-700 rounded-3xl border-2 border-amber-300 flex items-center justify-center text-3xl mx-auto mb-3 shadow-inner">
+                <i class="fa-solid fa-lock"></i>
+            </div>
+            <h3 class="font-black text-xl text-slate-800">ยืนยันสิทธิ์แอดมิน</h3>
+            <p class="text-xs text-slate-500 mt-1 mb-4 leading-relaxed">
+                ส่วนนี้สำหรับเจ้าหน้าที่บูธเท่านั้น<br>กรุณาระบุรหัสผ่านแอดมินเพื่อเข้าใช้งาน
+            </p>
+            <form onsubmit="event.preventDefault(); verifyAdminPassword();" class="space-y-3">
+                <div class="clay-pill-bar flex items-center bg-slate-50 rounded-full p-1.5 pl-4 border-2 border-amber-200">
+                    <i class="fa-solid fa-key text-amber-500 mr-2"></i>
+                    <input type="password" id="admin-pass-input" placeholder="รหัสผ่านแอดมิน..." autocomplete="current-password"
+                        class="flex-1 bg-transparent text-slate-800 font-black text-sm focus:outline-none placeholder-slate-400">
+                </div>
+                <p id="admin-pass-error" class="text-xs text-rose-500 font-extrabold hidden">❌ รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่ค่ะ</p>
+                <div class="grid grid-cols-2 gap-2.5 pt-2">
+                    <button type="button" onclick="closeAdminAuthModal()" class="btn-clay-white py-2.5 text-xs font-bold cursor-pointer">
+                        ยกเลิก
+                    </button>
+                    <button type="submit" class="btn-clay-teal py-2.5 text-xs font-black shadow-md cursor-pointer flex items-center justify-center gap-1.5">
+                        <span>เข้าสู่ระบบ</span> <i class="fa-solid fa-unlock text-xs"></i>
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -1646,8 +1707,107 @@
             }, 3000);
         };
 
+        // =====================================================================
+        // ADMIN SECURITY & ACCESS CONTROL (PASSWORD: ad2026)
+        // =====================================================================
+        const ADMIN_PASSWORD = "ad2026";
+        let isAdminAuthenticated = sessionStorage.getItem('health_sprint_admin_auth') === 'true';
+        let pendingAdminView = null;
+
+        // Auto-authenticate if password provided in URL parameter (e.g. for Stage display on PC: ?admin=ad2026)
+        const initParams = new URLSearchParams(window.location.search);
+        if (initParams.get('admin') === ADMIN_PASSWORD || initParams.get('pass') === ADMIN_PASSWORD) {
+            isAdminAuthenticated = true;
+            sessionStorage.setItem('health_sprint_admin_auth', 'true');
+        }
+
+        window.openAdminAuthModal = function() {
+            const modal = document.getElementById('admin-auth-modal');
+            const input = document.getElementById('admin-pass-input');
+            const errorEl = document.getElementById('admin-pass-error');
+            if (errorEl) errorEl.classList.add('hidden');
+            if (input) input.value = '';
+            if (modal) modal.classList.remove('hidden');
+            if (input) setTimeout(() => input.focus(), 150);
+        };
+
+        window.closeAdminAuthModal = function() {
+            const modal = document.getElementById('admin-auth-modal');
+            if (modal) modal.classList.add('hidden');
+            pendingAdminView = null;
+        };
+
+        window.verifyAdminPassword = function() {
+            const input = document.getElementById('admin-pass-input');
+            const errorEl = document.getElementById('admin-pass-error');
+            const val = (input ? input.value : '').trim();
+
+            if (val === ADMIN_PASSWORD) {
+                isAdminAuthenticated = true;
+                sessionStorage.setItem('health_sprint_admin_auth', 'true');
+                closeAdminAuthModal();
+                updateAdminNavBadges();
+                showToast("🔓 ยืนยันสิทธิ์แอดมินสำเร็จ ยินดีต้อนรับค่ะ!", "success");
+                if (pendingAdminView) {
+                    const target = pendingAdminView;
+                    pendingAdminView = null;
+                    switchView(target);
+                }
+            } else {
+                if (errorEl) errorEl.classList.remove('hidden');
+                if (input) {
+                    input.value = '';
+                    input.focus();
+                }
+                showToast("รหัสผ่านไม่ถูกต้อง (เฉพาะแอดมินเท่านั้นค่ะ)", "warning");
+            }
+        };
+
+        window.logoutAdmin = function() {
+            isAdminAuthenticated = false;
+            sessionStorage.removeItem('health_sprint_admin_auth');
+            updateAdminNavBadges();
+            switchView('player');
+            showToast("ออกจากสิทธิ์แอดมิน (ล็อกระบบเรียบร้อย)", "info");
+        };
+
+        function updateAdminNavBadges() {
+            const stageLock = document.getElementById('nav-stage-lock');
+            const adminLock = document.getElementById('nav-admin-lock');
+            const logoutBtn = document.getElementById('btn-admin-logout');
+
+            if (isAdminAuthenticated) {
+                if (stageLock) {
+                    stageLock.className = "fa-solid fa-unlock text-[10px] text-emerald-500 ml-0.5";
+                    stageLock.title = "ปลดล็อกสิทธิ์แอดมินแล้ว";
+                }
+                if (adminLock) {
+                    adminLock.className = "fa-solid fa-unlock text-[10px] text-emerald-500 ml-0.5";
+                    adminLock.title = "ปลดล็อกสิทธิ์แอดมินแล้ว";
+                }
+                if (logoutBtn) logoutBtn.classList.remove('hidden');
+            } else {
+                if (stageLock) {
+                    stageLock.className = "fa-solid fa-lock text-[10px] text-amber-500 ml-0.5";
+                    stageLock.title = "ต้องใช้รหัสผ่านแอดมิน (ad2026)";
+                }
+                if (adminLock) {
+                    adminLock.className = "fa-solid fa-lock text-[10px] text-amber-500 ml-0.5";
+                    adminLock.title = "ต้องใช้รหัสผ่านแอดมิน (ad2026)";
+                }
+                if (logoutBtn) logoutBtn.classList.add('hidden');
+            }
+        }
+
         // View Navigation (Mobile Player vs Big Stage Screen vs Admin Dashboard)
         window.switchView = function(view) {
+            // Security check: restrict stage & admin views strictly to authenticated admin
+            if ((view === 'stage' || view === 'admin') && !isAdminAuthenticated) {
+                pendingAdminView = view;
+                openAdminAuthModal();
+                return;
+            }
+
             window.currentActiveView = view;
             const views = {
                 player: document.getElementById('view-player'),
@@ -1664,13 +1824,15 @@
                 if (k === view) {
                     views[k].classList.remove('hidden');
                     if (k === 'stage') views[k].classList.add('flex');
-                    btns[k].className = "px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all bg-white text-emerald-600 shadow-sm flex items-center gap-1.5";
+                    btns[k].className = "px-2.5 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-extrabold transition-all bg-white text-teal-700 shadow-sm flex items-center gap-1.5";
                 } else {
                     views[k].classList.add('hidden');
                     views[k].classList.remove('flex');
-                    btns[k].className = "px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all text-slate-600 hover:text-slate-900 flex items-center gap-1.5";
+                    btns[k].className = "px-2.5 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-extrabold transition-all text-slate-600 hover:text-slate-900 flex items-center gap-1.5";
                 }
             });
+
+            updateAdminNavBadges();
 
             if (view === 'stage') {
                 renderAllLiveViews();
@@ -1691,13 +1853,13 @@
         window.selectAvatar = function(emoji, btnEl) {
             selectedAvatar = emoji;
             document.querySelectorAll('.avatar-opt').forEach(el => {
-                el.className = "avatar-opt py-2 text-2xl bg-slate-50 border-2 border-slate-200 rounded-xl transition";
+                el.className = "avatar-opt py-2.5 text-2xl bg-white border-2 border-slate-200 rounded-2xl shadow-sm transition transform hover:scale-105 active:scale-95";
             });
-            btnEl.className = "avatar-opt py-2 text-2xl bg-emerald-100 border-2 border-emerald-500 rounded-xl transition scale-105";
+            btnEl.className = "avatar-opt py-2.5 text-2xl bg-teal-100 border-2 border-teal-500 rounded-2xl shadow-sm transition transform scale-105";
         };
 
         window.lookupEmployee = function(rawId) {
-            const id = rawId.trim().toUpperCase();
+            const id = String(rawId || '').trim().toUpperCase().replace(/^'/, '');
             const strippedId = id.replace(/^0+/, '');
             const infoCard = document.getElementById('emp-info-card');
             const notFoundBox = document.getElementById('emp-not-found-box');
@@ -1712,13 +1874,21 @@
 
             const matchedEmp = employeeDB[id] || (strippedId ? employeeDB[strippedId] : null);
 
+            // Normalize ID matching for rounds count (checks with and without leading zeros, and ignores leading apostrophe)
+            const targetId = matchedEmp ? matchedEmp.id : id;
+            const cleanTarget = String(targetId).trim().replace(/^'/, '');
+            const strippedTarget = cleanTarget.replace(/^0+/, '');
+
+            const roundsPlayed = playLogs.filter(log => {
+                const logClean = String(log.empId || '').trim().replace(/^'/, '');
+                const logStripped = logClean.replace(/^0+/, '');
+                return logClean === cleanTarget || (strippedTarget && logStripped === strippedTarget);
+            }).length;
+
             if (matchedEmp) {
                 currentPlayer = matchedEmp;
-                
                 document.getElementById('emp-fullname').textContent = matchedEmp.name;
                 document.getElementById('emp-dept').textContent = matchedEmp.dept;
-                
-                const roundsPlayed = playLogs.filter(log => log.empId === matchedEmp.id).length;
                 document.getElementById('emp-play-count-badge').textContent = `เล่นแล้ว ${roundsPlayed} รอบ`;
 
                 infoCard.classList.remove('hidden');
@@ -1726,6 +1896,7 @@
                 enableStartButton();
             } else {
                 currentPlayer = { id: id, isNew: true };
+                document.getElementById('emp-play-count-badge').textContent = `เล่นแล้ว ${roundsPlayed} รอบ`;
                 infoCard.classList.add('hidden');
                 notFoundBox.classList.remove('hidden');
                 enableStartButton();
@@ -1754,11 +1925,39 @@
         window.joinRaceLobby = async function() {
             if (!currentPlayer) return;
 
+            // 1. Immediately blur and disable input editing to completely prevent iOS "Shake to Undo" popup
+            if (document.activeElement && typeof document.activeElement.blur === 'function') {
+                document.activeElement.blur();
+            }
+            const empInput = document.getElementById('emp-id-input');
+            if (empInput) {
+                empInput.blur();
+                empInput.setAttribute('readonly', 'true');
+                empInput.setAttribute('disabled', 'true');
+            }
+            const nameInput = document.getElementById('new-emp-name');
+            if (nameInput) {
+                nameInput.blur();
+                nameInput.setAttribute('readonly', 'true');
+                nameInput.setAttribute('disabled', 'true');
+            }
+            const deptInput = document.getElementById('new-emp-dept');
+            if (deptInput) {
+                deptInput.blur();
+                deptInput.setAttribute('readonly', 'true');
+                deptInput.setAttribute('disabled', 'true');
+            }
+            window.getSelection()?.removeAllRanges();
+            window.focus();
+
             if (currentPlayer.isNew) {
                 const nameVal = document.getElementById('new-emp-name').value.trim();
                 const deptVal = document.getElementById('new-emp-dept').value.trim();
                 if (!nameVal || !deptVal) {
                     showToast("กรุณากรอกชื่อ-นามสกุล และแผนกให้ครบถ้วนค่ะ", "warning");
+                    if (empInput) { empInput.removeAttribute('readonly'); empInput.removeAttribute('disabled'); }
+                    if (nameInput) { nameInput.removeAttribute('readonly'); nameInput.removeAttribute('disabled'); nameInput.focus(); }
+                    if (deptInput) { deptInput.removeAttribute('readonly'); deptInput.removeAttribute('disabled'); }
                     return;
                 }
                 const newEmp = { id: currentPlayer.id, name: nameVal, dept: deptVal };
@@ -2047,6 +2246,11 @@
             }
 
             isPlaying = true;
+            if (document.activeElement && typeof document.activeElement.blur === 'function') {
+                document.activeElement.blur();
+            }
+            window.getSelection()?.removeAllRanges();
+            window.focus();
             currentScore = (currentPlayer && activeRacers[currentPlayer.id]?.score) || 0;
             lastSyncedScore = currentScore;
             raceState.status = 'racing';
@@ -2150,6 +2354,13 @@
             raceState.status = 'racing';
             raceState.startTime = Date.now();
             
+            // Blur any remaining focus and clear selections to prevent iOS Shake-to-Undo popups
+            if (document.activeElement && typeof document.activeElement.blur === 'function') {
+                document.activeElement.blur();
+            }
+            window.getSelection()?.removeAllRanges();
+            window.focus();
+
             document.getElementById('game-score').textContent = "0";
             renderAllLiveViews();
 
@@ -2203,6 +2414,10 @@
 
         window.registerStep = function(isTap = false) {
             if (!isPlaying) return;
+            // Prevent focused elements from triggering iOS Shake-to-Undo
+            if (document.activeElement && document.activeElement !== document.body && typeof document.activeElement.blur === 'function') {
+                document.activeElement.blur();
+            }
             currentScore++;
             document.getElementById('game-score').textContent = currentScore;
 
@@ -2243,13 +2458,19 @@
             
             for (let i = 0; i < racersList.length; i++) {
                 const r = racersList[i];
+                const cleanEmpId = String(r.empId || '').trim().replace(/^'/, '');
+                const textEmpId = "'" + cleanEmpId; // Single quote forces Google Sheets to treat as pure text
+                const fullDateTime = new Date().toLocaleDateString('th-TH') + ' ' + timeStr;
+
                 const newLog = {
                     roundId: playLogs.length + i + 1,
-                    empId: r.empId,
+                    empId: cleanEmpId,
+                    empIdText: textEmpId,
                     name: r.name,
                     dept: r.dept,
                     score: r.score,
-                    timestamp: timeStr
+                    timestamp: timeStr,
+                    dateTime: fullDateTime
                 };
                 playLogs.push(newLog);
 
@@ -2265,7 +2486,16 @@
                         method: 'POST',
                         mode: 'no-cors',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(newLog)
+                        body: JSON.stringify({
+                            roundId: newLog.roundId,
+                            empId: textEmpId,       // Sent with ' so Sheets appendRow never strips 0!
+                            empIdRaw: cleanEmpId,
+                            name: newLog.name,
+                            dept: newLog.dept,
+                            score: newLog.score,
+                            timestamp: newLog.timestamp,
+                            dateTime: newLog.dateTime
+                        })
                     }).catch(() => {});
                 }
             }
@@ -2750,14 +2980,34 @@
         }
 
         window.playAgainSameUser = function() {
+            const empInput = document.getElementById('emp-id-input');
+            if (empInput) {
+                empInput.removeAttribute('readonly');
+                empInput.removeAttribute('disabled');
+            }
             joinRaceLobby();
         };
 
         window.resetToNewPlayer = function() {
             currentPlayer = null;
-            document.getElementById('emp-id-input').value = '';
-            document.getElementById('new-emp-name').value = '';
-            document.getElementById('new-emp-dept').value = '';
+            const empInput = document.getElementById('emp-id-input');
+            const nameInput = document.getElementById('new-emp-name');
+            const deptInput = document.getElementById('new-emp-dept');
+            if (empInput) {
+                empInput.removeAttribute('readonly');
+                empInput.removeAttribute('disabled');
+                empInput.value = '';
+            }
+            if (nameInput) {
+                nameInput.removeAttribute('readonly');
+                nameInput.removeAttribute('disabled');
+                nameInput.value = '';
+            }
+            if (deptInput) {
+                deptInput.removeAttribute('readonly');
+                deptInput.removeAttribute('disabled');
+                deptInput.value = '';
+            }
             document.getElementById('emp-info-card').classList.add('hidden');
             document.getElementById('emp-not-found-box').classList.add('hidden');
             disableStartButton("กรอกรหัสพนักงานเพื่อลงสนาม");
@@ -2774,18 +3024,25 @@
         function getAggregatedStandings() {
             const map = {};
             playLogs.forEach(log => {
-                if (!map[log.empId]) {
-                    map[log.empId] = {
-                        empId: log.empId,
+                const cleanId = String(log.empId || '').trim().replace(/^'/, '');
+                const strippedKey = cleanId.replace(/^0+/, '') || cleanId;
+
+                if (!map[strippedKey]) {
+                    map[strippedKey] = {
+                        empId: cleanId,
                         name: log.name,
                         dept: log.dept,
                         rounds: 0,
                         bestScore: 0
                     };
                 }
-                map[log.empId].rounds += 1;
-                if (log.score > map[log.empId].bestScore) {
-                    map[log.empId].bestScore = log.score;
+                map[strippedKey].rounds += 1;
+                if (log.score > map[strippedKey].bestScore) {
+                    map[strippedKey].bestScore = log.score;
+                }
+                // Keep the ID string with leading zero if available for clean presentation
+                if (cleanId.length > map[strippedKey].empId.length) {
+                    map[strippedKey].empId = cleanId;
                 }
             });
 
@@ -3083,22 +3340,101 @@
             btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-down"></i> ดึงข้อมูล`;
         };
 
+        // =====================================================================
+        // CSV EXPORT (PRESERVES LEADING ZERO & UTF-8 THAI SUPPORT)
+        // =====================================================================
+        window.exportToCSV = function() {
+            if (!playLogs || playLogs.length === 0) {
+                showToast("ยังไม่มีประวัติการเล่นในระบบค่ะ", "warning");
+                return;
+            }
+
+            let csvContent = "\uFEFF"; // UTF-8 BOM for Microsoft Excel Thai language compatibility
+            csvContent += "ลำดับ,วัน-เวลา,รหัสพนักงาน,ชื่อ - นามสกุล,แผนก,คะแนนรอบนี้ (ก้าว),รางวัลที่ได้รับ\n";
+
+            playLogs.forEach((log, idx) => {
+                const prize = prizesAwarded[log.empId]?.prizeName || "-";
+                const cleanEmpId = String(log.empId || "").replace(/^'/, "");
+                const safeName = (log.name || "-").replace(/"/g, '""');
+                const safeDept = (log.dept || "-").replace(/"/g, '""');
+                const safePrize = prize.replace(/"/g, '""');
+                const dateStr = log.dateTime || log.timestamp || "-";
+
+                // Format as ="084843" so Excel and Google Sheets strictly preserve leading zeros
+                csvContent += `${idx + 1},"${dateStr}",="${cleanEmpId}","${safeName}","${safeDept}",${log.score},"${safePrize}"\n`;
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `health_sprint_report_${new Date().toISOString().slice(0, 10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            showToast("ดาวน์โหลดรายงาน CSV เรียบร้อยแล้วค่ะ!", "success");
+        };
+
+        // =====================================================================
+        // FULLSCREEN TOGGLE (FOR PC / NOTEBOOK / PROJECTOR)
+        // =====================================================================
+        window.toggleFullScreen = function() {
+            const btn = document.getElementById('btn-stage-fullscreen');
+            if (!document.fullscreenElement) {
+                if (document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen().catch(() => {});
+                } else if (document.documentElement.webkitRequestFullscreen) {
+                    document.documentElement.webkitRequestFullscreen();
+                }
+                if (btn) btn.innerHTML = `<i class="fa-solid fa-compress text-teal-600"></i> <span class="hidden sm:inline">ย่อจอ</span>`;
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen().catch(() => {});
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                }
+                if (btn) btn.innerHTML = `<i class="fa-solid fa-expand text-teal-600"></i> <span class="hidden sm:inline">เต็มจอ</span>`;
+            }
+        };
+
+        document.addEventListener('fullscreenchange', () => {
+            const btn = document.getElementById('btn-stage-fullscreen');
+            if (!btn) return;
+            if (document.fullscreenElement) {
+                btn.innerHTML = `<i class="fa-solid fa-compress text-teal-600"></i> <span class="hidden sm:inline">ย่อจอ</span>`;
+            } else {
+                btn.innerHTML = `<i class="fa-solid fa-expand text-teal-600"></i> <span class="hidden sm:inline">เต็มจอ</span>`;
+            }
+        });
+
+        // Intercept and cancel iOS browser-level undo/redo operations during active gameplay
+        window.addEventListener('beforeinput', (e) => {
+            if (e.inputType === 'historyUndo' || e.inputType === 'historyRedo') {
+                e.preventDefault();
+            }
+        });
+
         // Initialize Real-time Cross-Device Sync & QR Code on Load
         initMQTTSync();
         updateRoomBadges();
         initFirebaseSync();
         updateWaitingRoomUI();
+        updateAdminNavBadges();
         if (window.generateStageQRCode) window.generateStageQRCode();
 
         // Check URL View Parameter on startup (Player mobile vs Big Stage vs Admin)
         const urlParams = new URLSearchParams(window.location.search);
         const reqView = urlParams.get('view');
-        if (reqView === 'player' || reqView === 'stage' || reqView === 'admin') {
-            switchView(reqView);
-        } else if (window.innerWidth < 768) {
-            switchView('player');
+        if (reqView === 'stage' || reqView === 'admin') {
+            if (isAdminAuthenticated) {
+                switchView(reqView);
+            } else {
+                switchView('player');
+            }
         } else {
-            switchView('stage');
+            switchView('player');
         }
     </script>
 </body>
