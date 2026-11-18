@@ -598,8 +598,39 @@
             <p class="text-xs text-slate-500 mt-1">ห้อง: <b id="waiting-room-badge" class="font-mono text-teal-600 font-black">booth-1</b> • ผู้ร่วมแข่งในรอบนี้ (<span id="waiting-total-racers" class="font-black text-teal-600">1</span> คน):</p>
 
             <!-- Live list of racers in this heat -->
-            <div id="waiting-racers-list" class="my-4 bg-slate-50/80 rounded-2xl p-3 border-2 border-slate-100 max-h-40 overflow-y-auto space-y-1.5 text-left shadow-inner">
+            <div id="waiting-racers-list" class="my-3 bg-slate-50/80 rounded-2xl p-3 border-2 border-slate-100 max-h-36 overflow-y-auto space-y-1.5 text-left shadow-inner">
                 <!-- Populated dynamically -->
+            </div>
+
+            <!-- Shake Sensor Status & Real-time Test Meter -->
+            <div id="waiting-sensor-card" class="my-3 bg-gradient-to-r from-teal-50 to-emerald-50 border-2 border-teal-200 rounded-2xl p-3 text-left shadow-xs">
+                <div class="flex items-center justify-between gap-2 mb-1">
+                    <span class="text-xs font-black text-teal-900 flex items-center gap-1.5">
+                        <i class="fa-solid fa-mobile-screen-button text-teal-600"></i> เซนเซอร์เขย่า (Shake Sensor)
+                    </span>
+                    <span id="waiting-sensor-badge" class="bg-amber-100 text-amber-900 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-amber-300">
+                        กำลังตรวจสอบ...
+                    </span>
+                </div>
+                <!-- Permission Prompt Button (For iOS Safari) -->
+                <div id="waiting-sensor-req-box" class="hidden my-2">
+                    <button type="button" onclick="requestMotionPermissionFromButton()" 
+                        class="w-full py-2.5 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white font-black text-xs rounded-xl shadow-md active:scale-95 transition flex items-center justify-center gap-2 cursor-pointer border border-teal-400">
+                        <i class="fa-solid fa-hand-pointer text-amber-300 animate-bounce"></i> 
+                        <span>แตะที่นี่เพื่ออนุญาตเซนเซอร์เขย่า (iPhone)</span>
+                    </button>
+                </div>
+                <!-- Shake Test Meter -->
+                <div class="flex items-center gap-2 mt-1.5 bg-white/80 p-2 rounded-xl border border-teal-100">
+                    <span class="text-[10px] font-bold text-slate-500 shrink-0">ทดสอบเขย่า:</span>
+                    <div class="flex-1 bg-slate-200 h-2.5 rounded-full overflow-hidden">
+                        <div id="waiting-shake-meter" class="bg-teal-500 h-full w-0 transition-all duration-75"></div>
+                    </div>
+                    <span id="waiting-shake-val" class="text-[10px] font-mono font-black text-teal-700 shrink-0 w-8 text-right">0</span>
+                </div>
+                <p id="waiting-sensor-note" class="text-[10px] text-slate-500 mt-1 leading-tight">
+                    💡 ลองเขย่าเครื่อง แถบสีจะขยับตามแรงเขย่าของคุณทันทีค่ะ
+                </p>
             </div>
 
             <div class="space-y-3">
@@ -663,7 +694,7 @@
         <!-- STEP 2: Active Gameplay Screen (Mobile Controller + Mini Live Race View) -->
         <div id="step-playing" class="w-full clay-card p-5 border-4 border-white shadow-2xl text-center hidden relative overflow-hidden">
             <!-- Countdown Overlay -->
-            <div id="countdown-overlay" onclick="initAudio()" class="absolute inset-0 bg-teal-950/90 backdrop-blur-md z-30 flex flex-col items-center justify-center text-white hidden cursor-pointer rounded-3xl">
+            <div id="countdown-overlay" onclick="initAudio(); if(!isMotionPermissionGranted) requestMotionPermission();" class="absolute inset-0 bg-teal-950/90 backdrop-blur-md z-30 flex flex-col items-center justify-center text-white hidden cursor-pointer rounded-3xl">
                 <p class="text-amber-300 font-black tracking-widest uppercase text-sm mb-2">✨ เตรียมซอยเท้าให้ไว! ✨</p>
                 <div id="countdown-number" class="text-8xl font-black text-white animate-bounce drop-shadow-xl font-mono">3</div>
                 <p class="text-teal-200 text-xs mt-4 font-bold">กำมือถือให้แน่น วิ่งแข่งกับเพื่อนบนจอ!</p>
@@ -696,9 +727,15 @@
                 </div>
             </div>
 
+            <!-- Motion Feedback Pill on Active Screen -->
+            <div id="playing-motion-feedback" class="mb-3 flex items-center justify-center gap-2 bg-teal-50 text-teal-800 text-xs font-black py-2 px-4 rounded-2xl border-2 border-teal-200 shadow-xs transition-all">
+                <i class="fa-solid fa-person-running text-teal-600 animate-bounce text-sm"></i>
+                <span id="playing-motion-text">เขย่ามือถือ หรือแตะปุ่มด้านล่างเพื่อวิ่ง!</span>
+            </div>
+
             <!-- Big Tap / Shake Booster Pad (Big Bouncy Clay Button) -->
-            <button id="btn-tap-boost" onpointerdown="registerStep(true)"
-                class="btn-clay-teal w-full py-7 rounded-3xl font-black text-xl sm:text-2xl shadow-2xl flex flex-col items-center justify-center cursor-pointer">
+            <button id="btn-tap-boost" onpointerdown="registerStep(true); if(!isMotionPermissionGranted) requestMotionPermission();"
+                class="btn-clay-teal w-full py-6 sm:py-7 rounded-3xl font-black text-xl sm:text-2xl shadow-2xl flex flex-col items-center justify-center cursor-pointer transition transform active:scale-95">
                 <span class="flex items-center gap-2"><span class="text-3xl">👟</span> วิ่งซอยเท้า / แตะรัวๆ!</span>
                 <span class="text-xs font-bold text-teal-100 mt-1">(เขย่ามือถือตามจังหวะวิ่ง หรือแตะปุ่มนี้รัวๆ เพื่อเร่งสปีด!)</span>
             </button>
@@ -1920,50 +1957,177 @@ function doPost(e) {<br>
         }
 
         // =====================================================================
+        // IOS SHAKE-TO-UNDO PREVENTION: DETACH INPUTS FROM DOM DURING RACE
+        // =====================================================================
+        let detachedCheckinNode = null;
+        let detachedCheckinParent = null;
+        let detachedCheckinNextSibling = null;
+
+        function purgeInputsForRace() {
+            // 1. Unfocus any active element immediately
+            if (document.activeElement && typeof document.activeElement.blur === 'function') {
+                document.activeElement.blur();
+            }
+            window.getSelection()?.removeAllRanges();
+            window.focus();
+
+            // 2. Clear input values and replace with clean clones so WebKit flushes individual undo records
+            ['emp-id-input', 'new-emp-name', 'new-emp-dept'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.blur();
+                    el.value = '';
+                    const clone = el.cloneNode(false);
+                    clone.value = '';
+                    clone.setAttribute('readonly', 'true');
+                    clone.setAttribute('disabled', 'true');
+                    el.replaceWith(clone);
+                }
+            });
+
+            // 3. Detach checkin card from DOM entirely so NO text inputs exist during the race
+            const checkin = document.getElementById('step-checkin');
+            if (checkin && checkin.parentNode) {
+                detachedCheckinParent = checkin.parentNode;
+                detachedCheckinNextSibling = checkin.nextSibling;
+                detachedCheckinNode = checkin.parentNode.removeChild(checkin);
+            }
+        }
+
+        function restoreInputsFromRace() {
+            if (detachedCheckinNode && detachedCheckinParent && !document.getElementById('step-checkin')) {
+                if (detachedCheckinNextSibling && detachedCheckinNextSibling.parentNode === detachedCheckinParent) {
+                    detachedCheckinParent.insertBefore(detachedCheckinNode, detachedCheckinNextSibling);
+                } else {
+                    detachedCheckinParent.insertBefore(detachedCheckinNode, detachedCheckinParent.firstChild);
+                }
+                detachedCheckinNode = null;
+            }
+            // Re-enable inputs
+            ['emp-id-input', 'new-emp-name', 'new-emp-dept'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.removeAttribute('readonly');
+                    el.removeAttribute('disabled');
+                }
+            });
+        }
+
+        // =====================================================================
+        // DEVICE MOTION & SENSOR SYSTEM (IOS SAFARI + ANDROID)
+        // =====================================================================
+        let isMotionPermissionGranted = false;
+        let isMotionListenerAttached = false;
+        let lastAccelVector = { x: 0, y: 0, z: 0 };
+
+        async function requestMotionPermission() {
+            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                try {
+                    const state = await DeviceMotionEvent.requestPermission();
+                    if (state === 'granted') {
+                        isMotionPermissionGranted = true;
+                        attachMotionListener();
+                        updateSensorStatusUI('ready');
+                        return true;
+                    } else {
+                        isMotionPermissionGranted = false;
+                        updateSensorStatusUI('denied');
+                        return false;
+                    }
+                } catch (err) {
+                    console.warn("Motion permission request error:", err);
+                    if (!window.isSecureContext) {
+                        updateSensorStatusUI('insecure_http');
+                    } else {
+                        updateSensorStatusUI('error');
+                    }
+                    return false;
+                }
+            } else {
+                // Non-iOS or older devices where requestPermission is not needed
+                isMotionPermissionGranted = true;
+                attachMotionListener();
+                updateSensorStatusUI('ready');
+                return true;
+            }
+        }
+
+        window.requestMotionPermissionFromButton = async function() {
+            const success = await requestMotionPermission();
+            if (success) {
+                showToast("เปิดใช้งานเซนเซอร์เขย่าเรียบร้อยแล้วค่ะ! 🏃‍♂️", "success");
+            } else {
+                if (!window.isSecureContext && /iPhone|iPad|iPod/.test(navigator.userAgent)) {
+                    showToast("iOS ต้องการ HTTPS ในการเปิดเซนเซอร์เขย่า แนะนำแตะปุ่มเพื่อวิ่งค่ะ", "info");
+                } else {
+                    showToast("ไม่สามารถเปิดเซนเซอร์ได้ สามารถแตะปุ่มเพื่อวิ่งได้ค่ะ", "info");
+                }
+            }
+        };
+
+        function attachMotionListener() {
+            if (!isMotionListenerAttached) {
+                window.removeEventListener('devicemotion', handleDeviceMotion);
+                window.addEventListener('devicemotion', handleDeviceMotion, { passive: true });
+                isMotionListenerAttached = true;
+            }
+        }
+
+        function updateSensorStatusUI(statusOverride) {
+            const badge = document.getElementById('waiting-sensor-badge');
+            const reqBox = document.getElementById('waiting-sensor-req-box');
+            const note = document.getElementById('waiting-sensor-note');
+            if (!badge) return;
+
+            const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+            const isHTTP = !window.isSecureContext && window.location.protocol === 'http:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+
+            if (statusOverride === 'ready' || isMotionPermissionGranted) {
+                badge.textContent = "🟢 พร้อมเขย่าวิ่ง";
+                badge.className = "bg-emerald-100 text-emerald-800 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-emerald-300";
+                if (reqBox) reqBox.classList.add('hidden');
+                if (note) note.textContent = "✨ เซนเซอร์พร้อมแล้ว! ลองเขย่ามือถือ แถบทดสอบจะขยับตามแรงมือค่ะ";
+            } else if (isHTTP && isIOS) {
+                badge.textContent = "ℹ️ โหมดแตะปุ่ม (HTTP)";
+                badge.className = "bg-sky-100 text-sky-800 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-sky-300";
+                if (reqBox) reqBox.classList.add('hidden');
+                if (note) note.textContent = "💡 iOS ปิดเซนเซอร์เขย่าบนเว็บ HTTP แนะนำแตะปุ่ม '👟 วิ่งซอยเท้า' วิ่งได้เร็วทันใจค่ะ!";
+            } else if (isIOS && typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function' && !isMotionPermissionGranted) {
+                badge.textContent = "🟡 รออนุญาตเซนเซอร์";
+                badge.className = "bg-amber-100 text-amber-900 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-amber-300 animate-pulse";
+                if (reqBox) reqBox.classList.remove('hidden');
+                if (note) note.textContent = "📱 แตะปุ่มด้านบน เพื่อให้ iPhone อนุญาตใช้เซนเซอร์เขย่าตรวจจับการวิ่งค่ะ";
+            } else {
+                badge.textContent = "🟢 พร้อมใช้งาน";
+                badge.className = "bg-emerald-100 text-emerald-800 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-emerald-300";
+                if (reqBox) reqBox.classList.add('hidden');
+            }
+        }
+
+        // =====================================================================
         // LOBBY & MULTI-PLAYER RACE MANAGEMENT
         // =====================================================================
         window.joinRaceLobby = async function() {
             if (!currentPlayer) return;
 
-            // 1. Immediately blur and disable input editing to completely prevent iOS "Shake to Undo" popup
-            if (document.activeElement && typeof document.activeElement.blur === 'function') {
-                document.activeElement.blur();
-            }
-            const empInput = document.getElementById('emp-id-input');
-            if (empInput) {
-                empInput.blur();
-                empInput.setAttribute('readonly', 'true');
-                empInput.setAttribute('disabled', 'true');
-            }
-            const nameInput = document.getElementById('new-emp-name');
-            if (nameInput) {
-                nameInput.blur();
-                nameInput.setAttribute('readonly', 'true');
-                nameInput.setAttribute('disabled', 'true');
-            }
-            const deptInput = document.getElementById('new-emp-dept');
-            if (deptInput) {
-                deptInput.blur();
-                deptInput.setAttribute('readonly', 'true');
-                deptInput.setAttribute('disabled', 'true');
-            }
-            window.getSelection()?.removeAllRanges();
-            window.focus();
+            // 1. Immediately request motion permission from direct user tap (iOS Safari requirement)
+            requestMotionPermission();
 
+            // 2. Validate new employee input before purging
             if (currentPlayer.isNew) {
-                const nameVal = document.getElementById('new-emp-name').value.trim();
-                const deptVal = document.getElementById('new-emp-dept').value.trim();
+                const nameVal = document.getElementById('new-emp-name')?.value?.trim() || '';
+                const deptVal = document.getElementById('new-emp-dept')?.value?.trim() || '';
                 if (!nameVal || !deptVal) {
                     showToast("กรุณากรอกชื่อ-นามสกุล และแผนกให้ครบถ้วนค่ะ", "warning");
-                    if (empInput) { empInput.removeAttribute('readonly'); empInput.removeAttribute('disabled'); }
-                    if (nameInput) { nameInput.removeAttribute('readonly'); nameInput.removeAttribute('disabled'); nameInput.focus(); }
-                    if (deptInput) { deptInput.removeAttribute('readonly'); deptInput.removeAttribute('disabled'); }
                     return;
                 }
                 const newEmp = { id: currentPlayer.id, name: nameVal, dept: deptVal };
                 employeeDB[currentPlayer.id] = newEmp;
                 currentPlayer = newEmp;
             }
+
+            // 3. Purge inputs from DOM to completely eliminate iOS "Shake to Undo" popup
+            purgeInputsForRace();
 
             initAudio();
 
@@ -1996,13 +2160,15 @@ function doPost(e) {<br>
             await pushLiveRaceState();
 
             // Move Mobile UI to Waiting Room
-            document.getElementById('step-checkin').classList.add('hidden');
-            document.getElementById('step-result').classList.add('hidden');
-            document.getElementById('step-waiting').classList.remove('hidden');
+            const checkinEl = document.getElementById('step-checkin');
+            if (checkinEl) checkinEl.classList.add('hidden');
+            document.getElementById('step-result')?.classList.add('hidden');
+            document.getElementById('step-waiting')?.classList.remove('hidden');
 
             document.getElementById('waiting-my-avatar').textContent = selectedAvatar;
             document.getElementById('waiting-my-name').textContent = `${currentPlayer.name} (${currentPlayer.id})`;
             updateWaitingRoomUI();
+            updateSensorStatusUI();
             showToast("ลงสนามเรียบร้อย! ตัวละครของคุณขึ้นบนจอใหญ่แล้ว", "success");
         };
 
@@ -2016,8 +2182,10 @@ function doPost(e) {<br>
                 });
                 await pushLiveRaceState();
             }
-            document.getElementById('step-waiting').classList.add('hidden');
-            document.getElementById('step-checkin').classList.remove('hidden');
+            restoreInputsFromRace();
+            document.getElementById('step-waiting')?.classList.add('hidden');
+            const checkinEl = document.getElementById('step-checkin');
+            if (checkinEl) checkinEl.classList.remove('hidden');
             updateWaitingRoomUI();
         };
 
@@ -2098,16 +2266,7 @@ function doPost(e) {<br>
             }
 
             initAudio();
-
-            // Request iOS Motion Permission if triggered on mobile
-            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-                try {
-                    const perm = await DeviceMotionEvent.requestPermission();
-                    if (perm === 'granted') window.addEventListener('devicemotion', handleDeviceMotion);
-                } catch (e) {}
-            } else if (typeof window.addEventListener === 'function') {
-                window.addEventListener('devicemotion', handleDeviceMotion);
-            }
+            attachMotionListener();
 
             // Reset scores to 0 for everyone in this heat
             racerIds.forEach(id => { activeRacers[id].score = 0; });
@@ -2147,6 +2306,9 @@ function doPost(e) {<br>
                 startedBox.classList.add('hidden');
             }
 
+            // Sync sensor status and live test meter
+            updateSensorStatusUI();
+
             // Update Admin status pill & count on Admin Dashboard
             const adminPill = document.getElementById('admin-race-status-pill');
             const adminCount = document.getElementById('admin-racer-count');
@@ -2173,22 +2335,8 @@ function doPost(e) {<br>
         // Player Self-Start (Activates gyro/accelerometer & Web Audio on mobile via direct user gesture)
         window.playerSelfStartRace = async function() {
             initAudio();
-
-            // Request iOS Motion Permission directly within user gesture
-            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-                try {
-                    const perm = await DeviceMotionEvent.requestPermission();
-                    if (perm === 'granted') {
-                        window.addEventListener('devicemotion', handleDeviceMotion);
-                    } else {
-                        showToast("ไม่ได้รับอนุญาตใช้เซนเซอร์ คุณสามารถแตะปุ่มเพื่อวิ่งได้ค่ะ", "info");
-                    }
-                } catch (e) {
-                    console.warn("Motion permission request error:", e);
-                }
-            } else if (typeof window.addEventListener === 'function') {
-                window.addEventListener('devicemotion', handleDeviceMotion);
-            }
+            await requestMotionPermission();
+            attachMotionListener();
 
             // If main race is already running (e.g. 5 seconds into race), catch up to master clock
             if (raceState.status === 'racing') {
@@ -2258,10 +2406,8 @@ function doPost(e) {<br>
             document.getElementById('game-score').textContent = currentScore;
             renderAllLiveViews();
 
-            // Setup motion sensor
-            if (typeof DeviceMotionEvent === 'undefined' || typeof DeviceMotionEvent.requestPermission !== 'function') {
-                window.addEventListener('devicemotion', handleDeviceMotion);
-            }
+            // Ensure motion sensor is attached and active
+            attachMotionListener();
 
             // Sync timer with master clock
             clearInterval(gameTimerInterval);
@@ -2303,9 +2449,7 @@ function doPost(e) {<br>
             isCountdownRunning = true;
 
             initAudio();
-            if (typeof DeviceMotionEvent === 'undefined' || typeof DeviceMotionEvent.requestPermission !== 'function') {
-                window.addEventListener('devicemotion', handleDeviceMotion);
-            }
+            attachMotionListener();
 
             // Switch mobile player screen if currently waiting
             if (currentPlayer && activeRacers[currentPlayer.id]) {
@@ -2354,12 +2498,15 @@ function doPost(e) {<br>
             raceState.status = 'racing';
             raceState.startTime = Date.now();
             
-            // Blur any remaining focus and clear selections to prevent iOS Shake-to-Undo popups
+            // Blur and purge any leftover focus
             if (document.activeElement && typeof document.activeElement.blur === 'function') {
                 document.activeElement.blur();
             }
             window.getSelection()?.removeAllRanges();
             window.focus();
+
+            // Ensure motion detection is actively listening
+            attachMotionListener();
 
             document.getElementById('game-score').textContent = "0";
             renderAllLiveViews();
@@ -2396,17 +2543,57 @@ function doPost(e) {<br>
             }, 100);
         }
 
-        // Accelerometer Motion Detection
+        // =====================================================================
+        // ACCELEROMETER / SHAKE / MOTION DETECTION ENGINE
+        // =====================================================================
         function handleDeviceMotion(event) {
+            let mag = 0;
+            let jerk = 0;
+
+            // A. User acceleration without gravity (iOS 13+ & modern sensors)
+            if (event.acceleration && (event.acceleration.x !== null || event.acceleration.y !== null || event.acceleration.z !== null)) {
+                const ax = event.acceleration.x || 0;
+                const ay = event.acceleration.y || 0;
+                const az = event.acceleration.z || 0;
+                mag = Math.sqrt(ax * ax + ay * ay + az * az);
+                jerk = Math.abs(ax - lastAccelVector.x) + Math.abs(ay - lastAccelVector.y) + Math.abs(az - lastAccelVector.z);
+                lastAccelVector = { x: ax, y: ay, z: az };
+            } 
+            // B. Acceleration including gravity (standard fallback across devices)
+            else if (event.accelerationIncludingGravity) {
+                const gx = event.accelerationIncludingGravity.x || 0;
+                const gy = event.accelerationIncludingGravity.y || 0;
+                const gz = event.accelerationIncludingGravity.z || 0;
+                const totalG = Math.sqrt(gx * gx + gy * gy + gz * gz);
+                mag = Math.abs(totalG - 9.8); // Deviation from 1G gravity
+                jerk = Math.abs(gx - lastAccelVector.x) + Math.abs(gy - lastAccelVector.y) + Math.abs(gz - lastAccelVector.z);
+                lastAccelVector = { x: gx, y: gy, z: gz };
+            }
+
+            const peakVal = Math.max(mag, jerk);
+
+            // Real-time test meter in Waiting Room (gives live visual feedback when user tests shaking)
+            const shakeMeter = document.getElementById('waiting-shake-meter');
+            const shakeVal = document.getElementById('waiting-shake-val');
+            if (shakeMeter && shakeVal) {
+                const displayPercent = Math.min(100, Math.round(peakVal * 5.5));
+                shakeMeter.style.width = displayPercent + '%';
+                shakeVal.textContent = Math.round(peakVal);
+                if (peakVal > 4 && !isMotionPermissionGranted) {
+                    isMotionPermissionGranted = true;
+                    updateSensorStatusUI('ready');
+                }
+            }
+
+            // If race is not actively playing, do not register game points
             if (!isPlaying) return;
-            const acc = event.accelerationIncludingGravity || event.acceleration;
-            if (!acc) return;
 
-            const delta = Math.abs(acc.x - lastAccel.x) + Math.abs(acc.y - lastAccel.y) + Math.abs(acc.z - lastAccel.z);
-            lastAccel = { x: acc.x, y: acc.y, z: acc.z };
-
+            // High-sensitivity step detection for physical shaking and in-place running:
+            // - mag > 5.5 m/s²: registers vigorous hand-shake or running stride
+            // - jerk > 6.0 m/s²: registers rapid back-and-forth shake direction changes
+            // - debounce > 85ms: caps step rate at ~11 steps/second to prevent multi-triggering
             const now = Date.now();
-            if (delta > 14 && (now - lastStepTime) > 110) {
+            if ((mag > 5.5 || jerk > 6.0) && (now - lastStepTime) > 85) {
                 lastStepTime = now;
                 window.registerStep(false);
             }
@@ -2414,16 +2601,44 @@ function doPost(e) {<br>
 
         window.registerStep = function(isTap = false) {
             if (!isPlaying) return;
-            // Prevent focused elements from triggering iOS Shake-to-Undo
-            if (document.activeElement && document.activeElement !== document.body && typeof document.activeElement.blur === 'function') {
-                document.activeElement.blur();
-            }
+
             currentScore++;
-            document.getElementById('game-score').textContent = currentScore;
+            const scoreEl = document.getElementById('game-score');
+            if (scoreEl) {
+                scoreEl.textContent = currentScore;
+            }
+
+            // Visual feedback on mobile screen
+            const motionFeedback = document.getElementById('playing-motion-feedback');
+            const motionText = document.getElementById('playing-motion-text');
+            if (motionFeedback && motionText) {
+                if (isTap) {
+                    motionText.textContent = `👟 แตะเร่งสปีด! (${currentScore})`;
+                } else {
+                    motionText.textContent = `⚡ เขย่าตรวจจับก้าวแล้ว! (${currentScore})`;
+                    motionFeedback.classList.add('bg-emerald-100', 'border-emerald-400');
+                    setTimeout(() => {
+                        motionFeedback.classList.remove('bg-emerald-100', 'border-emerald-400');
+                    }, 80);
+                }
+            }
+
+            // Button bounce on shake
+            const boostBtn = document.getElementById('btn-tap-boost');
+            if (boostBtn && !isTap) {
+                boostBtn.classList.add('scale-98');
+                setTimeout(() => boostBtn.classList.remove('scale-98'), 50);
+            }
 
             if (currentScore % 5 === 0) {
                 playBeep(isTap ? "E5" : "G5", "32n");
             }
+
+            // Haptic vibration feedback on supported devices
+            if (navigator.vibrate && currentScore % 2 === 0) {
+                try { navigator.vibrate(12); } catch (e) {}
+            }
+
             updateMyLiveScoreInCloud(currentScore);
         };
 
@@ -2434,6 +2649,7 @@ function doPost(e) {<br>
             clearInterval(gameTimerInterval);
             clearInterval(botSimulationInterval);
             window.removeEventListener('devicemotion', handleDeviceMotion);
+            isMotionListenerAttached = false;
 
             raceState.status = 'finished';
             raceState.adminStarted = false;
@@ -2980,41 +3196,27 @@ function doPost(e) {<br>
         }
 
         window.playAgainSameUser = function() {
-            const empInput = document.getElementById('emp-id-input');
-            if (empInput) {
-                empInput.removeAttribute('readonly');
-                empInput.removeAttribute('disabled');
-            }
             joinRaceLobby();
         };
 
         window.resetToNewPlayer = function() {
             currentPlayer = null;
+            restoreInputsFromRace();
             const empInput = document.getElementById('emp-id-input');
             const nameInput = document.getElementById('new-emp-name');
             const deptInput = document.getElementById('new-emp-dept');
-            if (empInput) {
-                empInput.removeAttribute('readonly');
-                empInput.removeAttribute('disabled');
-                empInput.value = '';
-            }
-            if (nameInput) {
-                nameInput.removeAttribute('readonly');
-                nameInput.removeAttribute('disabled');
-                nameInput.value = '';
-            }
-            if (deptInput) {
-                deptInput.removeAttribute('readonly');
-                deptInput.removeAttribute('disabled');
-                deptInput.value = '';
-            }
-            document.getElementById('emp-info-card').classList.add('hidden');
-            document.getElementById('emp-not-found-box').classList.add('hidden');
+            if (empInput) empInput.value = '';
+            if (nameInput) nameInput.value = '';
+            if (deptInput) deptInput.value = '';
+
+            document.getElementById('emp-info-card')?.classList.add('hidden');
+            document.getElementById('emp-not-found-box')?.classList.add('hidden');
             disableStartButton("กรอกรหัสพนักงานเพื่อลงสนาม");
 
-            document.getElementById('step-result').classList.add('hidden');
-            document.getElementById('step-waiting').classList.add('hidden');
-            document.getElementById('step-checkin').classList.remove('hidden');
+            document.getElementById('step-result')?.classList.add('hidden');
+            document.getElementById('step-waiting')?.classList.add('hidden');
+            const checkinEl = document.getElementById('step-checkin');
+            if (checkinEl) checkinEl.classList.remove('hidden');
             updateWaitingRoomUI();
         };
 
