@@ -512,16 +512,22 @@
 
             <div class="space-y-4">
                 <div>
-                    <label class="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">
-                        รหัสพนักงาน (Employee ID) <span class="text-rose-500">*</span>
+                    <label class="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center justify-between">
+                        <span>รหัสพนักงาน (เฉพาะตัวเลข) <span class="text-rose-500">*</span></span>
+                        <span class="text-[10px] text-teal-700 font-bold bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
+                            <i class="fa-solid fa-calculator text-teal-600"></i> ตัวเลข 0-9 เท่านั้น
+                        </span>
                     </label>
                     <!-- Search Pill Bar (Exact style from user reference image!) -->
                     <div class="clay-pill-bar flex items-center bg-white rounded-full p-1.5 pl-4 shadow-lg border-2 border-amber-100">
                         <span class="text-xl mr-2 animate-bounce">✨</span>
-                        <input type="text" id="emp-id-input" placeholder="กรอกรหัสพนักงาน เช่น 1001 หรือ 084843..." 
-                            oninput="lookupEmployee(this.value)"
-                            autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" inputmode="text"
-                            class="flex-1 bg-transparent text-slate-800 font-extrabold text-base focus:outline-none placeholder-slate-400 uppercase">
+                        <input type="tel" id="emp-id-input" placeholder="กรอกรหัสพนักงานเฉพาะตัวเลข เช่น 084843..." 
+                            oninput="this.value = this.value.replace(/\D/g, ''); lookupEmployee(this.value);"
+                            onkeypress="return (event.charCode >= 48 && event.charCode <= 57) || event.charCode === 13;"
+                            onpaste="setTimeout(() => { this.value = this.value.replace(/\D/g, ''); lookupEmployee(this.value); }, 0)"
+                            autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" 
+                            inputmode="numeric" pattern="[0-9]*"
+                            class="flex-1 bg-transparent text-slate-800 font-black text-base focus:outline-none placeholder-slate-400">
                         <button id="btn-start-game" onclick="joinRaceLobby()" disabled
                             class="px-5 py-2.5 rounded-full font-extrabold text-xs text-slate-400 bg-slate-200 cursor-not-allowed shrink-0 transition flex items-center gap-1.5">
                             <span>เข้าแข่ง</span> <i class="fa-solid fa-flag-checkered text-xs"></i>
@@ -1895,8 +1901,42 @@ function doPost(e) {<br>
             btnEl.className = "avatar-opt py-2.5 text-2xl bg-teal-100 border-2 border-teal-500 rounded-2xl shadow-sm transition transform scale-105";
         };
 
+        function setupNumericInputOnly() {
+            const input = document.getElementById('emp-id-input');
+            if (!input) return;
+            input.setAttribute('inputmode', 'numeric');
+            input.setAttribute('pattern', '[0-9]*');
+            input.oninput = function() {
+                this.value = this.value.replace(/\D/g, '');
+                lookupEmployee(this.value);
+            };
+            input.onkeypress = function(e) {
+                const charCode = (typeof e.which === "number") ? e.which : e.keyCode;
+                // Allow control keys (Backspace, Tab, Enter)
+                if (charCode === 8 || charCode === 9 || charCode === 13 || charCode === 0) return true;
+                // Block non-digits 0-9
+                if (charCode < 48 || charCode > 57) {
+                    if (e.preventDefault) e.preventDefault();
+                    return false;
+                }
+            };
+            input.onpaste = function() {
+                setTimeout(() => {
+                    this.value = this.value.replace(/\D/g, '');
+                    lookupEmployee(this.value);
+                }, 0);
+            };
+        }
+
         window.lookupEmployee = function(rawId) {
-            const id = String(rawId || '').trim().toUpperCase().replace(/^'/, '');
+            // Strictly enforce numeric digits only (strips any letters, symbols or spaces)
+            const digitsOnly = String(rawId || '').replace(/\D/g, '');
+            const inputEl = document.getElementById('emp-id-input');
+            if (inputEl && inputEl.value !== digitsOnly) {
+                inputEl.value = digitsOnly;
+            }
+
+            const id = digitsOnly;
             const strippedId = id.replace(/^0+/, '');
             const infoCard = document.getElementById('emp-info-card');
             const notFoundBox = document.getElementById('emp-not-found-box');
@@ -2011,6 +2051,8 @@ function doPost(e) {<br>
                     el.removeAttribute('disabled');
                 }
             });
+            // Re-attach strict numeric-only handlers on emp-id-input
+            setupNumericInputOnly();
         }
 
         // =====================================================================
@@ -3619,6 +3661,7 @@ function doPost(e) {<br>
         });
 
         // Initialize Real-time Cross-Device Sync & QR Code on Load
+        setupNumericInputOnly();
         initMQTTSync();
         updateRoomBadges();
         initFirebaseSync();
