@@ -328,10 +328,15 @@
                     <i class="fa-solid fa-expand text-teal-600"></i> <span class="hidden sm:inline">เต็มจอ</span>
                 </button>
 
-                <!-- Demo Bots Button -->
-                <button id="btn-add-bots" onclick="addDemoRacersToLobby()" class="btn-clay-white text-slate-700 px-3.5 sm:px-4 py-3 text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-sm">
-                    <i class="fa-solid fa-users-viewfinder text-teal-600"></i> <span class="hidden sm:inline">+ จำลอง 5 คน</span><span class="sm:hidden">+ 5 บอท</span>
-                </button>
+                <!-- Demo Bots Button (Supports 6+ Unlimited Racers) -->
+                <div class="flex items-center gap-1.5">
+                    <button id="btn-add-bots" onclick="addDemoRacersToLobby(6)" class="btn-clay-white text-slate-700 px-3 sm:px-3.5 py-3 text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-sm" title="เพิ่มผู้เล่นจำลอง 6 คนลงสนาม">
+                        <i class="fa-solid fa-users-viewfinder text-teal-600"></i> <span class="hidden sm:inline">+ จำลอง 6 คน (ไม่จำกัด)</span><span class="sm:hidden">+ 6 คน</span>
+                    </button>
+                    <button onclick="addSingleBot()" class="btn-clay-white text-slate-700 px-2.5 sm:px-3 py-3 text-xs font-black flex items-center gap-1 cursor-pointer shadow-sm" title="เพิ่มผู้เล่นจำลองอีก 1 คน (ไม่จำกัดจำนวน)">
+                        <i class="fa-solid fa-user-plus text-teal-600"></i> <span class="hidden sm:inline">+ 1 คน</span>
+                    </button>
+                </div>
 
                 <!-- Main Start Race Button (Admin Start) -->
                 <button id="btn-stage-start" onclick="triggerStartRace()" class="btn-clay-yellow px-6 sm:px-7 py-3.5 text-base sm:text-lg font-black flex items-center gap-2 cursor-pointer shadow-xl">
@@ -399,8 +404,8 @@
                         </p>
                     </div>
 
-                    <!-- Live Racers Grid -->
-                    <div id="stage-lobby-racers-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 min-h-[140px] max-h-[220px] overflow-y-auto pr-1">
+                    <!-- Live Racers Grid (Dynamic for unlimited racers, 6+ fits cleanly) -->
+                    <div id="stage-lobby-racers-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-2.5 min-h-[140px] max-h-[300px] overflow-y-auto pr-1">
                         <!-- Populated via JS -->
                     </div>
 
@@ -434,20 +439,18 @@
                         🏆 สรุปผลการแข่งขันรอบนี้ (Heat Results)
                     </span>
                     <h2 class="text-2xl sm:text-4xl font-black bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400 bg-clip-text text-transparent">
-                        🎉 ทำเนียบผู้ชนะประจำรอบ & รับของรางวัล
+                        🎉 ทำเนียบผู้ชนะประจำรอบ & สรุปรางวัล
                     </h2>
-                    <p class="text-xs sm:text-sm text-slate-300 mt-1">แอดมินมอบรางวัลให้ Top 3 ของรอบนี้ได้ทันที จากนั้นกดปุ่มเริ่มรอบใหม่สำหรับกลุ่มถัดไป</p>
+                    <p class="text-xs sm:text-sm text-slate-300 mt-1">ผู้ชนะอันดับ 1 รับสิทธิ์จับฉลากรางวัลใหญ่ 👑 ส่วนผู้เข้าร่วมทุกคนรับขนมอร่อยๆ ได้ทันที 🍬</p>
                 </div>
 
-                <!-- Top 1, 2, 3 Heat Podium Cards -->
-                <div id="stage-heat-podium-grid" class="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto w-full my-4">
+                <!-- Heat Winner Showcase & Consolation Grid -->
+                <div id="stage-heat-podium-grid" class="max-w-5xl mx-auto w-full my-4 flex flex-col gap-4">
                     <!-- Rendered via JS -->
                 </div>
 
-                <!-- Remaining racers list if >3 players -->
-                <div id="stage-heat-others-list" class="max-w-3xl mx-auto w-full hidden">
-                    <!-- Mini table for rank 4+ -->
-                </div>
+                <!-- Remaining racers list -->
+                <div id="stage-heat-others-list" class="max-w-3xl mx-auto w-full hidden"></div>
 
                 <!-- Admin Action Button: Next Heat & Reset -->
                 <div class="text-center pt-2 pb-2">
@@ -769,6 +772,9 @@
                 </div>
             </div>
 
+            <!-- Dynamic Prize / Reward Box for This Player -->
+            <div id="result-prize-box" class="my-3 transition-all"></div>
+
             <!-- Overall Top 3 Status -->
             <div id="result-rank-banner" class="bg-amber-50 border-2 border-amber-200 rounded-2xl p-3.5 mb-4 shadow-xs">
                 <p id="result-rank-text" class="text-xs sm:text-sm font-black text-amber-900">
@@ -801,12 +807,24 @@
                 </h2>
                 <p class="text-xs sm:text-sm text-slate-500 mt-0.5">ติดตามยอดผู้เข้าร่วม จำนวนรอบการเล่น Top 3 และจัดการการแจกรางวัล</p>
             </div>
-            <div class="flex flex-wrap gap-2">
-                <button onclick="openEmployeeModal()" class="btn-clay-white px-4 py-2.5 font-extrabold text-xs flex items-center gap-1.5 cursor-pointer">
-                    <i class="fa-solid fa-users-gear text-teal-600"></i> จัดการฐานข้อมูลพนักงาน (<span id="db-count">0</span>)
+            <div class="flex flex-wrap items-center gap-2">
+                <button onclick="syncLogsFromGoogleSheets()" id="btn-sync-logs" class="btn-clay-yellow px-4 py-2.5 font-black text-xs flex items-center gap-1.5 cursor-pointer shadow-sm" title="ดึงข้อมูลประวัติจริงล่าสุดจาก Google Sheet ให้ตรงกัน">
+                    <i class="fa-solid fa-cloud-arrow-down text-amber-800"></i> ซิงก์ประวัติจาก Google Sheet
                 </button>
-                <button onclick="exportToCSV()" class="btn-clay-teal px-5 py-2.5 font-black text-xs flex items-center gap-1.5 cursor-pointer">
-                    <i class="fa-solid fa-file-excel text-amber-200"></i> ดาวน์โหลดรายงาน (CSV)
+                <button onclick="openImportLogsModal()" class="btn-clay-white px-3.5 py-2.5 font-extrabold text-xs flex items-center gap-1.5 cursor-pointer" title="ก๊อปปี้แถวจาก Google Sheet มาวางโดยตรง">
+                    <i class="fa-solid fa-paste text-teal-600"></i> วางข้อมูลจากชีต
+                </button>
+                <button onclick="openRulesSettingsModal()" class="btn-clay-white px-3.5 py-2.5 font-extrabold text-xs flex items-center gap-1.5 cursor-pointer text-amber-800" title="ตั้งค่ากติการับรางวัลใหญ่รายวัน และเปลี่ยนชื่อรางวัล">
+                    <i class="fa-solid fa-sliders text-amber-600"></i> ตั้งค่ากติกา & รางวัล
+                </button>
+                <button onclick="openEmployeeModal()" class="btn-clay-white px-3.5 py-2.5 font-extrabold text-xs flex items-center gap-1.5 cursor-pointer">
+                    <i class="fa-solid fa-users-gear text-teal-600"></i> ฐานข้อมูลพนักงาน (<span id="db-count">0</span>)
+                </button>
+                <button onclick="exportToCSV()" class="btn-clay-teal px-4 py-2.5 font-black text-xs flex items-center gap-1.5 cursor-pointer">
+                    <i class="fa-solid fa-file-excel text-amber-200"></i> โหลด CSV
+                </button>
+                <button onclick="confirmClearAllLogs()" class="btn-clay-coral px-3.5 py-2.5 font-black text-xs flex items-center gap-1 cursor-pointer" title="ล้างประวัติการเล่นและรางวัลทั้งหมดในระบบ">
+                    <i class="fa-solid fa-trash-can"></i> ล้างประวัติทั้งหมด
                 </button>
             </div>
         </div>
@@ -836,6 +854,30 @@
                 <button onclick="resetCurrentRaceLobby()" class="btn-clay-coral px-4 py-2.5 font-extrabold text-xs flex items-center gap-1.5 cursor-pointer">
                     <i class="fa-solid fa-rotate-left"></i> ล้างรอบใหม่
                 </button>
+            </div>
+        </div>
+
+        <!-- Admin Live Lobby Racers Panel (View and Kick / Delete individual racers) -->
+        <div id="admin-live-lobby-panel" class="bg-white rounded-3xl p-4 sm:p-5 border-4 border-slate-200/80 shadow-md">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b-2 border-slate-100 gap-2">
+                <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full bg-teal-500 animate-pulse"></span>
+                    <h3 class="font-black text-sm sm:text-base text-slate-800 flex items-center gap-1.5">
+                        <i class="fa-solid fa-users text-teal-600"></i> จัดการผู้เล่นในห้องรอแข่งรอบนี้ (<span id="admin-live-lobby-count" class="text-teal-600">0</span> คน)
+                    </h3>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-[11px] text-slate-500 hidden md:inline">แอดมินกดปุ่ม <span class="text-rose-600 font-bold"><i class="fa-solid fa-trash-can"></i> ลบ</span> เพื่อนำผู้เล่นออกได้</span>
+                    <button onclick="addDemoRacersToLobby(6)" class="px-3 py-1 bg-teal-50 hover:bg-teal-100 text-teal-800 rounded-full font-bold text-[11px] transition border border-teal-200 cursor-pointer">
+                        + จำลอง 6 คน
+                    </button>
+                    <button onclick="addSingleBot()" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full font-bold text-[11px] transition border border-slate-200 cursor-pointer">
+                        + 1 บอท
+                    </button>
+                </div>
+            </div>
+            <div id="admin-live-lobby-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 mt-3">
+                <!-- Rendered dynamically via JS -->
             </div>
         </div>
 
@@ -877,8 +919,53 @@
                 </div>
                 <div>
                     <p class="text-xs font-extrabold text-slate-500">แจกรางวัลไปแล้ว</p>
-                    <p id="stat-prizes-given" class="text-2xl sm:text-3xl font-black text-slate-800">0 <span class="text-xs font-normal text-slate-400">/ 3</span></p>
+                    <p id="stat-prizes-given" class="text-2xl sm:text-3xl font-black text-slate-800">0 <span class="text-xs font-normal text-slate-400">รางวัล</span></p>
                 </div>
+            </div>
+        </div>
+
+        <!-- DAILY SUMMARY & 3-DAY PRIZE DISTRIBUTION BREAKDOWN -->
+        <div class="clay-card-warm p-5 sm:p-6 border-4 border-white shadow-xl">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b-2 border-amber-200/80 gap-3">
+                <div>
+                    <span class="inline-flex items-center gap-1.5 bg-amber-200 text-amber-950 font-black text-xs px-3 py-1 rounded-full uppercase tracking-wider shadow-xs mb-1">
+                        <i class="fa-solid fa-calendar-days text-amber-800"></i> สรุปสถิติ & ของรางวัลรายวัน (จัดงาน 3 วัน)
+                    </span>
+                    <h3 class="text-lg sm:text-xl font-black text-slate-800">ยอดผู้เข้าเล่น & การแจกของรางวัลแยกตามวัน</h3>
+                    <p class="text-xs text-slate-600 mt-0.5">
+                        นับจำนวนรอบทั้งหมดในแต่ละวัน (รวมคนที่มาเล่นซ้ำ) เพื่อให้ทราบจำนวนของรางวัลที่แจกไปทั้งหมด และวางแผนสำรองรางวัลในวันถัดไป
+                    </p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-slate-600">กรองดูวัน:</span>
+                    <select id="admin-daily-filter" onchange="renderAdminDashboard()" class="bg-white border-2 border-amber-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 shadow-xs focus:outline-none focus:border-teal-500">
+                        <option value="all">📅 รวมทุกวัน (All 3 Days)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Daily Stat Cards Row (Day 1, Day 2, Day 3 cards) -->
+            <div id="admin-daily-cards-grid" class="grid grid-cols-1 md:grid-cols-3 gap-3.5 my-4">
+                <!-- Rendered dynamically via JS -->
+            </div>
+
+            <!-- Daily Breakdown Table -->
+            <div class="overflow-x-auto bg-white rounded-2xl border-2 border-amber-200/60 shadow-inner mt-2">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="bg-amber-100/70 text-slate-700 text-[11px] uppercase tracking-wider border-b-2 border-amber-200">
+                            <th class="py-3 px-3.5 font-black">วันที่จัดกิจกรรม</th>
+                            <th class="py-3 px-3.5 font-black text-center">ยอดเล่นรวม (รวมคนซ้ำ)<br><span class="text-[10px] text-amber-800 font-semibold">= ของรางวัลทั้งหมดที่แจก</span></th>
+                            <th class="py-3 px-3.5 font-black text-center">จำนวนคน (ไม่ซ้ำ)</th>
+                            <th class="py-3 px-3.5 font-black text-center bg-amber-50">👑 รางวัลที่ 1<br><span class="text-[10px] text-amber-800 font-semibold">(สิทธิ์จับฉลาก)</span></th>
+                            <th class="py-3 px-3.5 font-black text-center bg-teal-50/70">🍬 รางวัลอื่นๆ<br><span class="text-[10px] text-teal-800 font-semibold">(ขนมขบเคี้ยว / ของว่าง)</span></th>
+                            <th class="py-3 px-3.5 font-black text-right">เฉลี่ยรอบ/คน</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-daily-table-body" class="divide-y divide-amber-100">
+                        <!-- Rendered via JS -->
+                    </tbody>
+                </table>
             </div>
         </div>
 
@@ -967,19 +1054,103 @@
             <div class="space-y-3">
                 <div>
                     <label class="block text-xs font-black text-slate-600 mb-1">ระบุชื่อรางวัลที่มอบให้:</label>
-                    <input type="text" id="prize-name-input" placeholder="เช่น Smart Watch, บัตรกำนัล 1,000 บาท..." 
+                    <input type="text" id="prize-name-input" placeholder="เช่น สิทธิ์จับฉลากรางวัลใหญ่, ขนมขบเคี้ยว..." 
                         class="w-full px-4 py-2.5 bg-slate-50 border-2 border-slate-200 rounded-2xl text-sm font-bold focus:outline-none focus:border-teal-500">
                 </div>
                 <div class="flex flex-wrap gap-1.5">
-                    <button type="button" onclick="document.getElementById('prize-name-input').value='รางวัลที่ 1: นาฬิกา Smart Watch'" class="text-[11px] bg-white border border-amber-200 hover:bg-amber-50 text-slate-700 px-3 py-1 rounded-full font-bold shadow-xs">⌚ Smart Watch</button>
-                    <button type="button" onclick="document.getElementById('prize-name-input').value='รางวัลที่ 2: เครื่องปั่นน้ำผลไม้พกพา'" class="text-[11px] bg-white border border-amber-200 hover:bg-amber-50 text-slate-700 px-3 py-1 rounded-full font-bold shadow-xs">🥤 เครื่องปั่นสุขภาพ</button>
-                    <button type="button" onclick="document.getElementById('prize-name-input').value='รางวัลที่ 3: เซ็ตกระบอกน้ำเก็บความเย็น'" class="text-[11px] bg-white border border-amber-200 hover:bg-amber-50 text-slate-700 px-3 py-1 rounded-full font-bold shadow-xs">🧴 เซ็ตกระบอกน้ำ</button>
+                    <button type="button" onclick="document.getElementById('prize-name-input').value='สิทธิ์จับฉลากรางวัลใหญ่ (Grand Lucky Draw)'" class="text-[11px] bg-amber-50 border border-amber-300 hover:bg-amber-100 text-amber-900 px-3 py-1 rounded-full font-bold shadow-xs">👑 สิทธิ์จับฉลากรางวัลใหญ่</button>
+                    <button type="button" onclick="document.getElementById('prize-name-input').value='ขนมขบเคี้ยว / ของว่างแสนอร่อย (Snack Reward)'" class="text-[11px] bg-teal-50 border border-teal-300 hover:bg-teal-100 text-teal-900 px-3 py-1 rounded-full font-bold shadow-xs">🍬 ขนมขบเคี้ยว / ของว่าง</button>
+                    <button type="button" onclick="document.getElementById('prize-name-input').value='ของที่ระลึกบูธสุขภาพ (Health Souvenir)'" class="text-[11px] bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 px-3 py-1 rounded-full font-bold shadow-xs">🎁 ของที่ระลึกบูธสุขภาพ</button>
                 </div>
             </div>
 
             <div class="grid grid-cols-2 gap-3 mt-6">
                 <button onclick="closePrizeModal()" class="btn-clay-white py-3 font-bold text-sm cursor-pointer">ยกเลิก</button>
                 <button onclick="savePrizeAssignment()" class="btn-clay-teal py-3 font-black text-sm cursor-pointer shadow-md">ยืนยันมอบรางวัล</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL: GAME RULES & PRIZE SETTINGS                                   -->
+    <!-- ===================================================================== -->
+    <div id="rules-settings-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="clay-card max-w-lg w-full p-6 sm:p-7 border-4 border-white shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="font-black text-lg text-slate-800 flex items-center gap-2">
+                    <span class="text-2xl">⚙️</span> ตั้งค่ากฎกติกา & ชื่อของรางวัล
+                </h3>
+                <button onclick="closeRulesSettingsModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition cursor-pointer">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <p class="text-xs text-slate-500 mb-4">
+                แอดมินสามารถปรับเปลี่ยนเงื่อนไขการรับรางวัลใหญ่ และแก้ไขชื่อของรางวัลในระบบได้ตลอดเวลาตามความต้องการค่ะ
+            </p>
+
+            <div class="space-y-4">
+                <!-- Grand Prize Eligibility Rule -->
+                <div class="bg-amber-50/70 p-4 rounded-2xl border-2 border-amber-200">
+                    <label class="block text-xs font-black text-amber-950 mb-2 flex items-center gap-1.5">
+                        <i class="fa-solid fa-shield-halved text-amber-600"></i> กฎการรับสิทธิ์รางวัลใหญ่ (เมื่อเข้าเส้นชัยอันดับ 1):
+                    </label>
+                    <div class="space-y-2 text-xs">
+                        <label class="flex items-start gap-2.5 p-2 bg-white rounded-xl border border-amber-200 cursor-pointer hover:bg-amber-50/50">
+                            <input type="radio" name="rule_grand_prize" value="daily_once" class="mt-0.5 text-teal-600 focus:ring-teal-500" checked>
+                            <div>
+                                <span class="font-bold text-slate-800">จำกัด 1 สิทธิ์ / คน / วัน (แนะนำสำหรับงาน 3 วัน) ⭐</span>
+                                <p class="text-[11px] text-slate-500 mt-0.5">ในวันเดียวกันจะไม่ได้รับรางวัลใหญ่ซ้ำ แต่หากมาเล่นในวันใหม่จะได้รับสิทธิ์รางวัลใหญ่อีกครั้ง</p>
+                            </div>
+                        </label>
+                        <label class="flex items-start gap-2.5 p-2 bg-white rounded-xl border border-amber-200 cursor-pointer hover:bg-amber-50/50">
+                            <input type="radio" name="rule_grand_prize" value="event_once" class="mt-0.5 text-teal-600 focus:ring-teal-500">
+                            <div>
+                                <span class="font-bold text-slate-800">จำกัด 1 สิทธิ์ / คน / ตลอดทั้งงาน (ตลอด 3 วันได้แค่ 1 สิทธิ์)</span>
+                                <p class="text-[11px] text-slate-500 mt-0.5">เมื่อเคยได้รับสิทธิ์จับฉลากแล้ว จะไม่ได้รับซ้ำอีกตลอดการจัดงานทั้ง 3 วัน</p>
+                            </div>
+                        </label>
+                        <label class="flex items-start gap-2.5 p-2 bg-white rounded-xl border border-amber-200 cursor-pointer hover:bg-amber-50/50">
+                            <input type="radio" name="rule_grand_prize" value="unlimited" class="mt-0.5 text-teal-600 focus:ring-teal-500">
+                            <div>
+                                <span class="font-bold text-slate-800">ไม่จำกัดสิทธิ์ (ได้ที่ 1 ทุกครั้ง ได้สิทธิ์ทุกครั้ง)</span>
+                                <p class="text-[11px] text-slate-500 mt-0.5">ชนะเลิศอันดับ 1 ในรอบใด ก็จะได้รับสิทธิ์จับฉลากรางวัลใหญ่ทุกรอบ</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Prize Names Customization -->
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-black text-slate-700 mb-1 flex items-center gap-1.5">
+                            <span>👑</span> ชื่อของรางวัลที่ 1 (ชนะเลิศประจำรอบ):
+                        </label>
+                        <input type="text" id="setting-rank1-name" class="w-full px-3.5 py-2.5 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:border-teal-500" placeholder="เช่น สิทธิ์จับฉลากรางวัลใหญ่ (Grand Lucky Draw Ticket)">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-black text-slate-700 mb-1 flex items-center gap-1.5">
+                            <span>🍬</span> ชื่อของรางวัลอื่นๆ (รางวัลปลอบใจสำหรับทุกคน):
+                        </label>
+                        <input type="text" id="setting-consolation-name" class="w-full px-3.5 py-2.5 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:border-teal-500" placeholder="เช่น ขนมขบเคี้ยว / ของว่างแสนอร่อย (Snack Reward)">
+                    </div>
+                </div>
+
+                <!-- Duplicate Handling Action -->
+                <div class="bg-teal-50/70 p-3.5 rounded-2xl border-2 border-teal-200 text-xs">
+                    <label class="block font-black text-teal-950 mb-1.5 flex items-center gap-1">
+                        <i class="fa-solid fa-bell text-teal-600"></i> เมื่อมีผู้เล่นที่เคยได้รางวัลใหญ่แล้วมาชนะที่ 1 ซ้ำ:
+                    </label>
+                    <select id="setting-duplicate-action" class="w-full bg-white border-2 border-teal-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800">
+                        <option value="alert_and_swap">⚠️ แจ้งเตือนแอดมิน และปรับเป็นรางวัลขนมให้อัตโนมัติ (แอดมินกดเปลี่ยนได้)</option>
+                        <option value="alert_only">🔔 แจ้งเตือนแอดมินอย่างเดียว ให้แอดมินตัดสินใจกดเลือกเอง</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 mt-6">
+                <button onclick="closeRulesSettingsModal()" class="btn-clay-white py-3 font-bold text-xs cursor-pointer">ยกเลิก</button>
+                <button onclick="saveRulesSettings()" class="btn-clay-teal py-3 font-black text-xs cursor-pointer shadow-md">บันทึกการตั้งค่า</button>
             </div>
         </div>
     </div>
@@ -1014,17 +1185,50 @@
                 <p id="gs-sync-status" class="text-[11px] text-teal-700 mt-1 hidden"></p>
                 <details class="mt-2 text-[11px] text-teal-900 bg-white/80 p-2.5 rounded-xl border border-teal-200 cursor-pointer">
                     <summary class="font-bold flex items-center justify-between text-teal-800">
-                        <span><i class="fa-solid fa-code mr-1"></i> โค้ด Google Apps Script (ล็อกเลข 0 นำหน้าไม่ให้หาย)</span>
+                        <span><i class="fa-solid fa-code mr-1"></i> โค้ด Google Apps Script (ดึงรายชื่อ + บันทึกผล + ส่งประวัติเข้าแดชบอร์ด)</span>
                         <span class="text-[10px] text-teal-600 underline">กดดูโค้ด</span>
                     </summary>
-                    <div class="mt-2 text-left font-mono text-[10px] bg-slate-900 text-teal-300 p-2.5 rounded-xl overflow-x-auto select-all leading-relaxed">
+                    <div class="mt-2 text-left font-mono text-[10px] bg-slate-900 text-teal-300 p-2.5 rounded-xl overflow-x-auto select-all leading-relaxed max-h-48">
+// 1. ส่งข้อมูลรายชื่อพนักงาน และ ประวัติการเล่นเข้าเว็บแดชบอร์ด<br>
+function doGet(e) {<br>
+&nbsp;&nbsp;var ss = SpreadsheetApp.getActiveSpreadsheet();<br>
+&nbsp;&nbsp;var nameSheet = ss.getSheetByName("Name") || ss.getSheets()[0];<br>
+&nbsp;&nbsp;var nameData = nameSheet.getDataRange().getValues();<br>
+&nbsp;&nbsp;var employees = {};<br>
+&nbsp;&nbsp;for (var i = 1; i &lt; nameData.length; i++) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;var row = nameData[i];<br>
+&nbsp;&nbsp;&nbsp;&nbsp;var empId = String(row[0] || '').trim().replace(/^'/, '');<br>
+&nbsp;&nbsp;&nbsp;&nbsp;if (empId) employees[empId] = { id: empId, name: String(row[1] || '').trim(), dept: String(row[2] || '-').trim() };<br>
+&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;var logSheet = ss.getSheetByName("GameLogs");<br>
+&nbsp;&nbsp;var logs = [];<br>
+&nbsp;&nbsp;if (logSheet) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;var logData = logSheet.getDataRange().getValues();<br>
+&nbsp;&nbsp;&nbsp;&nbsp;for (var j = 1; j &lt; logData.length; j++) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;var lRow = logData[j];<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;var lEmpId = String(lRow[1] || '').trim().replace(/^'/, '');<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if (lEmpId) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;var dateVal = lRow[0];<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;var dateStr = (dateVal instanceof Date) ? Utilities.formatDate(dateVal, "Asia/Bangkok", "dd/MM/yyyy HH:mm:ss") : String(dateVal || '');<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;logs.push({ roundId: j, dateTime: dateStr, timestamp: dateStr.split(' ')[1] || dateStr, empId: lEmpId, name: String(lRow[2] || '').trim(), dept: String(lRow[3] || '-').trim(), score: Number(lRow[4]) || 0 });<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;return ContentService.createTextOutput(JSON.stringify({ status: "success", count: Object.keys(employees).length, employees: employees, logs: logs })).setMimeType(ContentService.MimeType.JSON);<br>
+}<br>
+<br>
+// 2. รับผลการแข่งจากมือถือผู้เล่น บันทึกลงชีต GameLogs (ล็อกเลข 0 นำหน้า)<br>
 function doPost(e) {<br>
-&nbsp;&nbsp;var d = JSON.parse(e.postData.contents);<br>
-&nbsp;&nbsp;var s = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();<br>
-&nbsp;&nbsp;// ใส่ ' นำหน้าเพื่อให้ Google Sheets บันทึกเป็นข้อความ (รักษาเลข 0 ข้างหน้า)<br>
-&nbsp;&nbsp;var empId = "'" + String(d.empIdRaw || d.empId || '').replace(/^'/, '');<br>
-&nbsp;&nbsp;s.appendRow([new Date(), empId, d.name, d.dept, d.score]);<br>
-&nbsp;&nbsp;return ContentService.createTextOutput(JSON.stringify({status:'success'})).setMimeType(ContentService.MimeType.JSON);<br>
+&nbsp;&nbsp;try {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;var d = JSON.parse(e.postData.contents);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;var ss = SpreadsheetApp.getActiveSpreadsheet();<br>
+&nbsp;&nbsp;&nbsp;&nbsp;var s = ss.getSheetByName("GameLogs") || ss.getActiveSheet();<br>
+&nbsp;&nbsp;&nbsp;&nbsp;var empId = "'" + String(d.empIdRaw || d.empId || '').replace(/^'/, '');<br>
+&nbsp;&nbsp;&nbsp;&nbsp;s.appendRow([new Date(), empId, d.name, d.dept, d.score]);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;return ContentService.createTextOutput(JSON.stringify({status:'success'})).setMimeType(ContentService.MimeType.JSON);<br>
+&nbsp;&nbsp;} catch (err) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;return ContentService.createTextOutput(JSON.stringify({status:'error', message: err.toString()})).setMimeType(ContentService.MimeType.JSON);<br>
+&nbsp;&nbsp;}<br>
 }
                     </div>
                 </details>
@@ -1041,6 +1245,102 @@ function doPost(e) {<br>
 
             <div class="flex-1 overflow-y-auto border border-slate-100 rounded-2xl divide-y divide-slate-100 text-xs p-1" id="emp-db-list">
                 <!-- Populated via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL: IMPORT / PASTE LOGS FROM GOOGLE SHEETS                        -->
+    <!-- ===================================================================== -->
+    <div id="import-logs-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="clay-card max-w-xl w-full p-6 sm:p-7 border-4 border-white shadow-2xl max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="font-black text-lg text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-file-import text-teal-600"></i> นำเข้าประวัติการเล่นจาก Google Sheets
+                </h3>
+                <button onclick="closeImportLogsModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition cursor-pointer">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <p class="text-xs text-slate-500 mb-3 leading-relaxed">
+                คัดลอกข้อมูลจากแท็บ <b>GameLogs</b> ใน Google Sheets แล้วนำมาวางในช่องด้านล่างนี้ได้เลยค่ะ ระบบจะคำนวณอันดับ 1-3, สรุปจำนวนรอบ และแสดงประวัติให้อัตโนมัติทันที
+            </p>
+
+            <!-- Paste Input Box -->
+            <div class="mb-3">
+                <label class="block text-xs font-black text-slate-700 mb-1">
+                    วางข้อมูลจาก Google Sheets (กดคัดลอกจากชีตมาวางได้เลย):
+                </label>
+                <textarea id="paste-logs-input" rows="6" 
+                    placeholder="วางข้อมูลที่คัดลอกจาก Google Sheets ที่นี่ เช่น:&#10;17/11/2569 15:10:35	062498	จิตรณภัสส์ ทะแกล้วพันธุ์	HRD	0&#10;17/11/2569 15:10:35	084843	กมลพร เป็งวัน	HRD	3&#10;18/11/2569 8:13:56	084843	กมลพร เป็งวัน	HRD	281"
+                    class="w-full p-3 font-mono text-xs bg-slate-50 border-2 border-slate-200 rounded-2xl focus:outline-none focus:border-teal-500 focus:bg-white transition"></textarea>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="grid grid-cols-2 gap-3 mb-3">
+                <button type="button" onclick="closeImportLogsModal()" class="btn-clay-white py-2.5 font-bold text-xs cursor-pointer">
+                    ยกเลิก
+                </button>
+                <button type="button" onclick="executeImportPastedLogs()" class="btn-clay-teal py-2.5 font-black text-xs cursor-pointer shadow-md flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-check"></i> ประมวลผลเข้าแดชบอร์ด
+                </button>
+            </div>
+
+            <!-- Helper Notice & Auto-Sync Script Guide -->
+            <div class="border-t border-slate-100 pt-3">
+                <details class="text-[11px] text-teal-900 bg-teal-50/70 p-3 rounded-2xl border border-teal-200 cursor-pointer">
+                    <summary class="font-bold flex items-center justify-between text-teal-800">
+                        <span><i class="fa-solid fa-wand-magic-sparkles mr-1 text-teal-600"></i> วิธีตั้งค่าให้ Google Sheet ส่งข้อมูลเข้าแดชบอร์ดอัตโนมัติ</span>
+                        <span class="text-[10px] text-teal-600 underline">ดูวิธีทำ</span>
+                    </summary>
+                    <div class="mt-2 text-slate-700 text-xs space-y-1.5 leading-relaxed">
+                        <p>1. ไปที่ Google Sheets ของคุณ &gt; เมนู <b>ส่วนขยาย (Extensions) &gt; Apps Script</b></p>
+                        <p>2. นำโค้ดด้านล่างไปแทนที่โค้ดเดิมทั้งหมด แล้วกด <b>บันทึก (Save)</b></p>
+                        <p>3. กด <b>ทำให้ใช้งานได้ (Deploy) &gt; จัดการการทำให้ใช้งานได้ (Manage deployments) &gt; กดรูปดินสอ (Edit) &gt; เลือกเวอร์ชันใหม่ (New version) &gt; ทำให้ใช้งานได้</b></p>
+                        <p>4. หลังจากนั้นแดชบอร์ดจะสามารถกดปุ่ม <b>"ซิงก์ประวัติจาก Google Sheet"</b> เพื่อดึงข้อมูลอัตโนมัติได้ตลอดเวลาค่ะ!</p>
+                        <div class="mt-2 text-left font-mono text-[10px] bg-slate-900 text-teal-300 p-2.5 rounded-xl overflow-x-auto select-all leading-relaxed max-h-40">
+function doGet(e) {<br>
+&nbsp;&nbsp;var ss = SpreadsheetApp.getActiveSpreadsheet();<br>
+&nbsp;&nbsp;var nameSheet = ss.getSheetByName("Name") || ss.getSheets()[0];<br>
+&nbsp;&nbsp;var nameData = nameSheet.getDataRange().getValues();<br>
+&nbsp;&nbsp;var employees = {};<br>
+&nbsp;&nbsp;for (var i = 1; i &lt; nameData.length; i++) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;var row = nameData[i];<br>
+&nbsp;&nbsp;&nbsp;&nbsp;var empId = String(row[0] || '').trim().replace(/^'/, '');<br>
+&nbsp;&nbsp;&nbsp;&nbsp;if (empId) employees[empId] = { id: empId, name: String(row[1] || '').trim(), dept: String(row[2] || '-').trim() };<br>
+&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;var logSheet = ss.getSheetByName("GameLogs");<br>
+&nbsp;&nbsp;var logs = [];<br>
+&nbsp;&nbsp;if (logSheet) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;var logData = logSheet.getDataRange().getValues();<br>
+&nbsp;&nbsp;&nbsp;&nbsp;for (var j = 1; j &lt; logData.length; j++) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;var lRow = logData[j];<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;var lEmpId = String(lRow[1] || '').trim().replace(/^'/, '');<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if (lEmpId) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;var dateVal = lRow[0];<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;var dateStr = (dateVal instanceof Date) ? Utilities.formatDate(dateVal, "Asia/Bangkok", "dd/MM/yyyy HH:mm:ss") : String(dateVal || '');<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;logs.push({ roundId: j, dateTime: dateStr, timestamp: dateStr.split(' ')[1] || dateStr, empId: lEmpId, name: String(lRow[2] || '').trim(), dept: String(lRow[3] || '-').trim(), score: Number(lRow[4]) || 0 });<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;return ContentService.createTextOutput(JSON.stringify({ status: "success", count: Object.keys(employees).length, employees: employees, logs: logs })).setMimeType(ContentService.MimeType.JSON);<br>
+}<br>
+<br>
+function doPost(e) {<br>
+&nbsp;&nbsp;try {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;var d = JSON.parse(e.postData.contents);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;var ss = SpreadsheetApp.getActiveSpreadsheet();<br>
+&nbsp;&nbsp;&nbsp;&nbsp;var s = ss.getSheetByName("GameLogs") || ss.getActiveSheet();<br>
+&nbsp;&nbsp;&nbsp;&nbsp;var empId = "'" + String(d.empIdRaw || d.empId || '').replace(/^'/, '');<br>
+&nbsp;&nbsp;&nbsp;&nbsp;s.appendRow([new Date(), empId, d.name, d.dept, d.score]);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;return ContentService.createTextOutput(JSON.stringify({status:'success'})).setMimeType(ContentService.MimeType.JSON);<br>
+&nbsp;&nbsp;} catch (err) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;return ContentService.createTextOutput(JSON.stringify({status:'error', message: err.toString()})).setMimeType(ContentService.MimeType.JSON);<br>
+&nbsp;&nbsp;}<br>
+}
+                        </div>
+                    </div>
+                </details>
             </div>
         </div>
     </div>
@@ -1167,8 +1467,240 @@ function doPost(e) {<br>
         };
 
         // 2. APPLICATION STATE
+        // Configurable Game Rules & Prize Settings (Editable by Admin via UI)
+        const DEFAULT_GAME_RULES = {
+            grandPrizeRule: 'daily_once', // 'daily_once' (วันละ 1 สิทธิ์) | 'event_once' (ตลอดงาน 1 สิทธิ์) | 'unlimited'
+            rank1PrizeName: 'สิทธิ์จับฉลากรางวัลใหญ่ (Grand Lucky Draw Ticket)',
+            consolationPrizeName: 'ขนมขบเคี้ยว / ของว่างแสนอร่อย (Snack Reward)',
+            duplicateAction: 'alert_and_swap' // 'alert_and_swap' | 'alert_only'
+        };
+        let gameRules = { ...DEFAULT_GAME_RULES };
+        try {
+            const savedRules = localStorage.getItem('health_sprint_rules');
+            if (savedRules) gameRules = { ...DEFAULT_GAME_RULES, ...JSON.parse(savedRules) };
+        } catch(e) {}
+
         let playLogs = [];          // All completed rounds across entire event
+        try {
+            const savedLogs = localStorage.getItem('health_sprint_play_logs');
+            if (savedLogs !== null) {
+                playLogs = JSON.parse(savedLogs);
+            } else {
+                playLogs = []; // Default empty so it reflects the live state of Google Sheets!
+            }
+        } catch (e) {
+            playLogs = [];
+        }
+
+        // Helper: Extract date string (dd/mm/yyyy) from log object
+        function extractDateFromLog(log) {
+            if (!log) return new Date().toLocaleDateString('th-TH');
+            if (log.date && typeof log.date === 'string' && (log.date.includes('/') || log.date.includes('-'))) {
+                return log.date.trim();
+            }
+            if (log.dateTime && typeof log.dateTime === 'string') {
+                const parts = log.dateTime.trim().split(/\s+/);
+                if (parts[0] && (parts[0].includes('/') || parts[0].includes('-'))) {
+                    return parts[0].trim();
+                }
+            }
+            if (log.timestamp && typeof log.timestamp === 'string') {
+                const parts = log.timestamp.trim().split(/\s+/);
+                if (parts[0] && (parts[0].includes('/') || parts[0].includes('-'))) {
+                    return parts[0].trim();
+                }
+            }
+            return new Date().toLocaleDateString('th-TH');
+        }
+
+        // Helper: Check if an employee is eligible to win the Grand Prize
+        function checkGrandPrizeEligibility(empId, targetDateStr) {
+            if (!empId) return { eligible: true };
+            const cleanId = String(empId).trim().replace(/^'/, '');
+            const targetDate = targetDateStr || new Date().toLocaleDateString('th-TH');
+
+            if (gameRules.grandPrizeRule === 'unlimited') {
+                return { eligible: true };
+            }
+
+            const allPriorGrandWins = playLogs.filter(l => {
+                const logEmp = String(l.empId || '').trim().replace(/^'/, '');
+                if (logEmp !== cleanId) return false;
+                const isRank1 = l.heatRank === 1 && !l.isDuplicateWin;
+                const prizeStr = String(l.prize || '');
+                const hasGrandPrize = prizeStr.includes('จับฉลาก') || prizeStr.includes('รางวัลใหญ่');
+                return isRank1 || hasGrandPrize;
+            });
+
+            if (gameRules.grandPrizeRule === 'daily_once') {
+                const wonToday = allPriorGrandWins.filter(l => extractDateFromLog(l) === targetDate);
+                if (wonToday.length > 0) {
+                    return {
+                        eligible: false,
+                        rule: 'daily_once',
+                        reason: `ได้รับสิทธิ์จับฉลากรางวัลใหญ่ไปแล้วในวันนี้ (${targetDate}) ในรอบ #${wonToday[0].roundId}`,
+                        previousRound: wonToday[0].roundId,
+                        wonDate: targetDate,
+                        wonCount: wonToday.length
+                    };
+                }
+            } else if (gameRules.grandPrizeRule === 'event_once') {
+                if (allPriorGrandWins.length > 0) {
+                    return {
+                        eligible: false,
+                        rule: 'event_once',
+                        reason: `ได้รับสิทธิ์จับฉลากรางวัลใหญ่ไปแล้วในรอบ #${allPriorGrandWins[0].roundId} (${extractDateFromLog(allPriorGrandWins[0])})`,
+                        previousRound: allPriorGrandWins[0].roundId,
+                        wonDate: extractDateFromLog(allPriorGrandWins[0]),
+                        wonCount: allPriorGrandWins.length
+                    };
+                }
+            }
+
+            return { eligible: true };
+        }
+
+        // Compute 3-day daily summary & prize breakdown
+        function getDailyStatistics() {
+            const dailyMap = {};
+            const todayStr = new Date().toLocaleDateString('th-TH');
+
+            playLogs.forEach(log => {
+                const dateKey = extractDateFromLog(log);
+                if (!dailyMap[dateKey]) {
+                    dailyMap[dateKey] = {
+                        date: dateKey,
+                        isToday: dateKey === todayStr,
+                        totalPlays: 0,       // All plays that day (รวมคนเล่นซ้ำ) = Total rewards given!
+                        uniqueRacers: new Set(),
+                        rank1Count: 0,       // 👑 Grand Prize tickets
+                        consolationCount: 0, // 🍬 Snacks
+                        logs: []
+                    };
+                }
+                const day = dailyMap[dateKey];
+                day.totalPlays += 1;
+                const cleanEmpId = String(log.empId || '').trim().replace(/^'/, '');
+                if (cleanEmpId) day.uniqueRacers.add(cleanEmpId);
+
+                const prizeName = String(log.prize || '');
+                const isGrand = (log.heatRank === 1 && !log.isDuplicateWin) || prizeName.includes('จับฉลาก') || prizeName.includes('รางวัลใหญ่');
+                if (isGrand) {
+                    day.rank1Count += 1;
+                } else {
+                    day.consolationCount += 1;
+                }
+                day.logs.push(log);
+            });
+
+            // Parse and sort dates descending
+            const parseDateMs = (dStr) => {
+                const parts = dStr.split(/[\/\-]/);
+                if (parts.length >= 3) {
+                    let d = parseInt(parts[0], 10);
+                    let m = parseInt(parts[1], 10) - 1;
+                    let y = parseInt(parts[2], 10);
+                    if (y > 2500) y -= 543;
+                    return new Date(y, m, d).getTime();
+                }
+                return 0;
+            };
+
+            const sortedDays = Object.values(dailyMap).sort((a, b) => parseDateMs(b.date) - parseDateMs(a.date));
+            return sortedDays;
+        }
+
+        // Rules Settings Modal Handlers
+        window.openRulesSettingsModal = function() {
+            const radios = document.getElementsByName('rule_grand_prize');
+            for (let r of radios) {
+                if (r.value === gameRules.grandPrizeRule) r.checked = true;
+            }
+            const rank1Input = document.getElementById('setting-rank1-name');
+            const consoInput = document.getElementById('setting-consolation-name');
+            const dupAction = document.getElementById('setting-duplicate-action');
+            if (rank1Input) rank1Input.value = gameRules.rank1PrizeName;
+            if (consoInput) consoInput.value = gameRules.consolationPrizeName;
+            if (dupAction) dupAction.value = gameRules.duplicateAction;
+            document.getElementById('rules-settings-modal')?.classList.remove('hidden');
+        };
+
+        window.closeRulesSettingsModal = function() {
+            document.getElementById('rules-settings-modal')?.classList.add('hidden');
+        };
+
+        window.saveRulesSettings = function() {
+            const radios = document.getElementsByName('rule_grand_prize');
+            let selectedRule = 'daily_once';
+            for (let r of radios) {
+                if (r.checked) { selectedRule = r.value; break; }
+            }
+            const rank1 = document.getElementById('setting-rank1-name')?.value.trim() || DEFAULT_GAME_RULES.rank1PrizeName;
+            const conso = document.getElementById('setting-consolation-name')?.value.trim() || DEFAULT_GAME_RULES.consolationPrizeName;
+            const dupAction = document.getElementById('setting-duplicate-action')?.value || 'alert_and_swap';
+
+            gameRules = {
+                grandPrizeRule: selectedRule,
+                rank1PrizeName: rank1,
+                consolationPrizeName: conso,
+                duplicateAction: dupAction
+            };
+            localStorage.setItem('health_sprint_rules', JSON.stringify(gameRules));
+            closeRulesSettingsModal();
+            renderAdminDashboard();
+            renderAllLiveViews();
+            showToast("บันทึกการตั้งค่ากติกาและชื่อของรางวัลเรียบร้อยแล้วค่ะ! ✨", "success");
+        };
+
+        // Clear All Logs
+        window.confirmClearAllLogs = async function() {
+            if (!confirm("⚠️ ต้องการล้างประวัติการเล่นและรางวัลทั้งหมดในระบบใช่หรือไม่?\n\n(ข้อมูลใน Google Sheet จะไม่ได้รับผลกระทบ แต่ประวัติบนหน้าเว็บและแคชจะถูกรีเซ็ตเป็น 0 รอบ)")) {
+                return;
+            }
+            playLogs = [];
+            prizesAwarded = {};
+            localStorage.setItem('health_sprint_play_logs', JSON.stringify([]));
+            localStorage.removeItem('health_sprint_prizes');
+            if (db && currentUser) {
+                try {
+                    const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'play_logs'));
+                    snap.forEach(async (d) => { await deleteDoc(d.ref); });
+                    const snapPrizes = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'prizes'));
+                    snapPrizes.forEach(async (d) => { await deleteDoc(d.ref); });
+                } catch(e) {}
+            }
+            renderAdminDashboard();
+            renderAllLiveViews();
+            showToast("ล้างประวัติในระบบเป็น 0 รอบ เรียบร้อยแล้วค่ะ", "info");
+        };
+
+        // Quick helper to award alternate prize for duplicate winner
+        window.awardAlternatePrize = function(empId, prizeType) {
+            const prizeName = prizeType === 'consolation' ? gameRules.consolationPrizeName : gameRules.rank1PrizeName;
+            prizesAwarded[empId] = {
+                rank: 1,
+                prizeName: prizeName,
+                awardedAt: new Date().toLocaleTimeString('th-TH')
+            };
+            localStorage.setItem('health_sprint_prizes', JSON.stringify(prizesAwarded));
+            
+            // Also update the latest playLog for this empId
+            const lastLog = [...playLogs].reverse().find(l => l.empId === empId);
+            if (lastLog) {
+                lastLog.prize = prizeName;
+                localStorage.setItem('health_sprint_play_logs', JSON.stringify(playLogs));
+            }
+
+            renderAllLiveViews();
+            renderAdminDashboard();
+            showToast(`ปรับรางวัลให้คุณ ${activeRacers[empId]?.name || empId} เป็น "${prizeName}" เรียบร้อยแล้วค่ะ`, "success");
+        };
+
         let prizesAwarded = {};     // Assigned prizes for Top 3
+        try {
+            const savedPrizes = localStorage.getItem('health_sprint_prizes');
+            if (savedPrizes) prizesAwarded = JSON.parse(savedPrizes);
+        } catch (e) {}
         let activeRacers = {};      // Current heat racers: { empId: { empId, name, dept, avatar, score, isBot, color } }
         let raceState = {
             status: 'lobby',        // 'lobby' | 'countdown' | 'racing' | 'finished'
@@ -1202,7 +1734,9 @@ function doPost(e) {<br>
             { bg: 'bg-[#facc15]', light: 'bg-[#fefce8]', border: 'border-amber-300', text: 'text-amber-800', pill: 'bg-amber-100 text-amber-800', bar: 'bg-amber-400' },
             { bg: 'bg-[#fb7185]', light: 'bg-[#fff1f2]', border: 'border-rose-300', text: 'text-rose-800', pill: 'bg-rose-100 text-rose-800', bar: 'bg-rose-400' },
             { bg: 'bg-[#c084fc]', light: 'bg-[#faf5ff]', border: 'border-purple-300', text: 'text-purple-800', pill: 'bg-purple-100 text-purple-800', bar: 'bg-purple-400' },
-            { bg: 'bg-[#fb923c]', light: 'bg-[#fff7ed]', border: 'border-orange-300', text: 'text-orange-800', pill: 'bg-orange-100 text-orange-800', bar: 'bg-orange-400' }
+            { bg: 'bg-[#fb923c]', light: 'bg-[#fff7ed]', border: 'border-orange-300', text: 'text-orange-800', pill: 'bg-orange-100 text-orange-800', bar: 'bg-orange-400' },
+            { bg: 'bg-[#84cc16]', light: 'bg-[#f7fee7]', border: 'border-lime-300', text: 'text-lime-800', pill: 'bg-lime-100 text-lime-800', bar: 'bg-lime-400' },
+            { bg: 'bg-[#e879f9]', light: 'bg-[#fdf4ff]', border: 'border-fuchsia-300', text: 'text-fuchsia-800', pill: 'bg-fuchsia-100 text-fuchsia-800', bar: 'bg-fuchsia-400' }
         ];
 
         // =====================================================================
@@ -1300,6 +1834,24 @@ function doPost(e) {<br>
                         delete activeRacers[msg.empId];
                         renderAllLiveViews();
                         renderAdminDashboard();
+                    }
+                    break;
+                }
+
+                case 'KICK': {
+                    if (msg.empId && activeRacers[msg.empId]) {
+                        delete activeRacers[msg.empId];
+                        renderAllLiveViews();
+                        renderAdminDashboard();
+                    }
+                    if (currentPlayer && currentPlayer.id === msg.empId) {
+                        showToast("แอดมินนำคุณออกจากรอบนี้แล้วค่ะ หากต้องการลงสนามกรุณาเช็คอินอีกครั้งนะคะ", "warning");
+                        document.getElementById('step-waiting')?.classList.add('hidden');
+                        document.getElementById('step-playing')?.classList.add('hidden');
+                        document.getElementById('step-result')?.classList.add('hidden');
+                        const checkinEl = document.getElementById('step-checkin');
+                        if (checkinEl) checkinEl.classList.remove('hidden');
+                        updateWaitingRoomUI();
                     }
                     break;
                 }
@@ -1560,9 +2112,29 @@ function doPost(e) {<br>
                     employeeDB = { ...employeeDB, ...normalizedMap };
                     const totalUnique = Object.keys(result.employees).length;
 
+                    // Automatically sync game logs from Google Sheets if returned by Apps Script
+                    if (result.logs && Array.isArray(result.logs)) {
+                        playLogs = result.logs.map((l, idx) => ({
+                            roundId: l.roundId || idx + 1,
+                            empId: String(l.empId || '').trim().replace(/^'/, ''),
+                            name: l.name || employeeDB[String(l.empId).replace(/^'/, '')]?.name || 'พนักงาน',
+                            dept: l.dept || employeeDB[String(l.empId).replace(/^'/, '')]?.dept || '-',
+                            score: Number(l.score) || 0,
+                            heatRank: Number(l.heatRank) || (idx === 0 ? 1 : 2),
+                            prize: l.prize || (idx === 0 ? gameRules.rank1PrizeName : gameRules.consolationPrizeName),
+                            timestamp: l.timestamp || '-',
+                            dateTime: l.dateTime || '-'
+                        }));
+                        localStorage.setItem('health_sprint_play_logs', JSON.stringify(playLogs));
+                        if (playLogs.length === 0) {
+                            prizesAwarded = {};
+                            localStorage.removeItem('health_sprint_prizes');
+                        }
+                    }
+
                     if (badgeEl) {
                         badgeEl.className = "mt-2 inline-flex items-center gap-1.5 text-[11px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 rounded-full font-semibold";
-                        badgeEl.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-500"></i> เชื่อมต่อฐานข้อมูลพนักงานแล้ว (${totalUnique} คน)`;
+                        badgeEl.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-500"></i> เชื่อมต่อฐานข้อมูลพนักงานแล้ว (${totalUnique} คน)` + (playLogs.length > 0 ? ` • ประวัติ ${playLogs.length} รอบ` : '');
                     }
 
                     // Re-trigger lookup if user already typed an ID while loading
@@ -2231,8 +2803,39 @@ function doPost(e) {<br>
             updateWaitingRoomUI();
         };
 
-        // Add 5 Demo Racers so user can test 5 players racing simultaneously right away
-        window.addDemoRacersToLobby = async function() {
+        // Admin Kick / Delete individual contestant from lobby/race
+        window.kickRacer = async function(empId) {
+            if (!empId || !activeRacers[empId]) return;
+            const racer = activeRacers[empId];
+            const racerName = racer.name || empId;
+            if (!confirm(`ต้องการนำคุณ "${racerName}" (รหัส: ${empId}) ออกจากการแข่งขันรอบนี้ใช่หรือไม่?`)) {
+                return;
+            }
+            delete activeRacers[empId];
+            broadcastSyncMessage({
+                type: 'KICK',
+                empId: empId
+            });
+            await pushLiveRaceState();
+            renderAllLiveViews();
+            renderAdminDashboard();
+            showToast(`นำคุณ ${racerName} ออกจากรอบนี้เรียบร้อยแล้วค่ะ`, "info");
+        };
+
+        // Demo bots pool with 8 varied profiles for testing unlimited racers
+        const DEMO_BOT_POOL = [
+            { empId: "1001", name: "กิตติพงษ์ รักสุขภาพ", dept: "วิศวกรรม", avatar: "🏃‍♂️", speed: 4.3 },
+            { empId: "1002", name: "ศิริพร ใจเบิกบาน", dept: "HR", avatar: "🏃‍♀️", speed: 4.6 },
+            { empId: "1003", name: "ธนวัฒน์ พลังล้น", dept: "ฝ่ายผลิต", avatar: "🦸‍♂️", speed: 4.8 },
+            { empId: "1004", name: "ปวีณา สดใส", dept: "บัญชี", avatar: "🐆", speed: 4.4 },
+            { empId: "1005", name: "ณัฐพล วิ่งสู้ฟัด", dept: "IT", avatar: "🚀", speed: 4.5 },
+            { empId: "1006", name: "ชลธิชา สายฟิต", dept: "การตลาด", avatar: "🤸‍♀️", speed: 4.7 },
+            { empId: "1007", name: "อัครเดช สปีดโบ๊ท", dept: "คลังสินค้า", avatar: "⚡", speed: 4.2 },
+            { empId: "1008", name: "กมลวรรณ ว่องไว", dept: "จัดซื้อ", avatar: "🚴‍♀️", speed: 4.6 }
+        ];
+
+        // Add 6 Demo Racers by default (or any count) to test unlimited racers immediately
+        window.addDemoRacersToLobby = async function(count = 6) {
             if (raceState.status === 'racing' || raceState.status === 'countdown') {
                 showToast("กำลังแข่งขันอยู่ กรุณารอให้จบรอบก่อนนะคะ", "warning");
                 return;
@@ -2241,15 +2844,8 @@ function doPost(e) {<br>
                 activeRacers = {};
             }
 
-            const bots = [
-                { empId: "1001", name: "กิตติพงษ์ รักสุขภาพ", dept: "วิศวกรรม", avatar: "🏃‍♂️", speed: 4.3 },
-                { empId: "1002", name: "ศิริพร ใจเบิกบาน", dept: "HR", avatar: "🏃‍♀️", speed: 4.6 },
-                { empId: "1003", name: "ธนวัฒน์ พลังล้น", dept: "ฝ่ายผลิต", avatar: "🦸‍♂️", speed: 4.1 },
-                { empId: "1004", name: "ปวีณา สดใส", dept: "บัญชี", avatar: "🐆", speed: 4.8 },
-                { empId: "1005", name: "ณัฐพล วิ่งสู้ฟัด", dept: "IT", avatar: "🚀", speed: 4.4 }
-            ];
-
-            bots.forEach((b, idx) => {
+            const targetBots = DEMO_BOT_POOL.slice(0, count);
+            targetBots.forEach((b) => {
                 if (!activeRacers[b.empId]) {
                     activeRacers[b.empId] = {
                         empId: b.empId,
@@ -2271,7 +2867,41 @@ function doPost(e) {<br>
                 racers: activeRacers
             });
             await pushLiveRaceState();
-            showToast("เพิ่มนักวิ่งจำลองลงสนามครบ 5 คนแล้ว! กด 'ปล่อยตัวพร้อมกัน!' ได้เลย", "success");
+            renderAllLiveViews();
+            renderAdminDashboard();
+            showToast(`เพิ่มนักวิ่งจำลองลงสนาม ${Object.keys(activeRacers).length} คนแล้ว (ไม่จำกัดจำนวน)! กดปล่อยตัวได้เลย`, "success");
+        };
+
+        // Add a single bot dynamically (allows testing 7, 8, 9, 10+ racers)
+        window.addSingleBot = async function() {
+            if (raceState.status === 'racing' || raceState.status === 'countdown') {
+                showToast("กำลังแข่งขันอยู่ กรุณารอให้จบรอบก่อนนะคะ", "warning");
+                return;
+            }
+            const currentCount = Object.keys(activeRacers).length;
+            const nextBot = DEMO_BOT_POOL[currentCount % DEMO_BOT_POOL.length];
+            const nextId = "10" + String(currentCount + 1).padStart(2, '0');
+            const newBot = {
+                empId: nextId,
+                name: nextBot.name + (currentCount >= DEMO_BOT_POOL.length ? ` (${currentCount + 1})` : ''),
+                dept: nextBot.dept,
+                avatar: nextBot.avatar,
+                score: 0,
+                isBot: true,
+                botSpeed: nextBot.speed,
+                colorIdx: currentCount % LANE_COLORS.length
+            };
+            activeRacers[nextId] = newBot;
+            raceState.status = 'lobby';
+            broadcastSyncMessage({
+                type: 'ROOM_STATE',
+                raceState: raceState,
+                racers: activeRacers
+            });
+            await pushLiveRaceState();
+            renderAllLiveViews();
+            renderAdminDashboard();
+            showToast(`เพิ่มผู้เล่นจำลอง "${newBot.name}" แล้ว (รวมในรอบนี้ ${Object.keys(activeRacers).length} คน)`, "success");
         };
 
         window.resetCurrentRaceLobby = async function() {
@@ -2712,13 +3342,44 @@ function doPost(e) {<br>
 
             // Record every participant's score from this heat into permanent playLogs
             const timeStr = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            const racersList = Object.values(activeRacers);
+            const todayDateStr = new Date().toLocaleDateString('th-TH');
+            const fullDateTime = todayDateStr + ' ' + timeStr;
+            const sortedHeatRacers = Object.values(activeRacers).sort((a, b) => b.score - a.score);
             
-            for (let i = 0; i < racersList.length; i++) {
-                const r = racersList[i];
+            for (let i = 0; i < sortedHeatRacers.length; i++) {
+                const r = sortedHeatRacers[i];
+                const heatRank = i + 1;
                 const cleanEmpId = String(r.empId || '').trim().replace(/^'/, '');
                 const textEmpId = "'" + cleanEmpId; // Single quote forces Google Sheets to treat as pure text
-                const fullDateTime = new Date().toLocaleDateString('th-TH') + ' ' + timeStr;
+
+                let assignedPrize = gameRules.consolationPrizeName;
+                let isDuplicateWin = false;
+                let duplicateReason = "";
+
+                if (heatRank === 1) {
+                    const eligibility = checkGrandPrizeEligibility(cleanEmpId, todayDateStr);
+                    if (eligibility.eligible) {
+                        assignedPrize = gameRules.rank1PrizeName;
+                        if (!prizesAwarded[cleanEmpId]) {
+                            prizesAwarded[cleanEmpId] = {
+                                rank: 1,
+                                prizeName: gameRules.rank1PrizeName,
+                                awardedAt: timeStr,
+                                wonDate: todayDateStr
+                            };
+                            localStorage.setItem('health_sprint_prizes', JSON.stringify(prizesAwarded));
+                        }
+                    } else {
+                        // Already received Grand Prize in today's session (or earlier per rule)
+                        isDuplicateWin = true;
+                        duplicateReason = eligibility.reason;
+                        if (gameRules.duplicateAction === 'alert_and_swap') {
+                            assignedPrize = gameRules.consolationPrizeName;
+                        } else {
+                            assignedPrize = gameRules.rank1PrizeName;
+                        }
+                    }
+                }
 
                 const newLog = {
                     roundId: playLogs.length + i + 1,
@@ -2727,8 +3388,13 @@ function doPost(e) {<br>
                     name: r.name,
                     dept: r.dept,
                     score: r.score,
+                    heatRank: heatRank,
+                    prize: assignedPrize,
+                    isDuplicateWin: isDuplicateWin,
+                    duplicateReason: duplicateReason,
                     timestamp: timeStr,
-                    dateTime: fullDateTime
+                    dateTime: fullDateTime,
+                    date: todayDateStr
                 };
                 playLogs.push(newLog);
 
@@ -2751,12 +3417,17 @@ function doPost(e) {<br>
                             name: newLog.name,
                             dept: newLog.dept,
                             score: newLog.score,
+                            heatRank: newLog.heatRank,
+                            prize: newLog.prize,
                             timestamp: newLog.timestamp,
                             dateTime: newLog.dateTime
                         })
                     }).catch(() => {});
                 }
             }
+
+            localStorage.setItem('health_sprint_play_logs', JSON.stringify(playLogs));
+            renderAdminDashboard();
 
             await pushLiveRaceState();
             renderAllLiveViews();
@@ -2917,7 +3588,7 @@ function doPost(e) {<br>
                     <div class="col-span-full py-8 text-center text-slate-400">
                         <i class="fa-solid fa-qrcode text-3xl mb-2 text-amber-400"></i>
                         <p class="text-xs font-black text-slate-700">ยังไม่มีผู้เล่นสแกนเข้ารอบนี้</p>
-                        <p class="text-[11px] text-slate-500 mt-0.5">สแกน QR Code ทางซ้ายเพื่อลงสนาม หรือกด "+ จำลอง 5 คน" เพื่อทดสอบ</p>
+                        <p class="text-[11px] text-slate-500 mt-0.5">สแกน QR Code ทางซ้ายเพื่อลงสนาม หรือกด "+ จำลอง 6 คน" เพื่อทดสอบ</p>
                     </div>
                 `;
                 return;
@@ -2927,20 +3598,25 @@ function doPost(e) {<br>
             racers.forEach((r, idx) => {
                 const color = LANE_COLORS[r.colorIdx % LANE_COLORS.length];
                 grid.innerHTML += `
-                    <div class="bg-white rounded-2xl p-2.5 flex items-center gap-2.5 shadow-sm border-2 ${color.border} hover:shadow-md transition transform hover:-translate-y-0.5">
-                        <div class="w-11 h-11 rounded-2xl ${color.light} ${color.border} border-2 text-2xl flex items-center justify-center shrink-0 shadow-xs">
-                            ${r.avatar || '🏃‍♂️'}
-                        </div>
-                        <div class="overflow-hidden text-left flex-1 min-w-0">
-                            <div class="flex items-center gap-1.5">
-                                <span class="w-2.5 h-2.5 rounded-full ${color.bg} shrink-0"></span>
-                                <p class="font-extrabold text-xs text-slate-800 truncate">${r.name}</p>
+                    <div class="bg-white rounded-2xl p-2.5 flex items-center justify-between gap-2 shadow-sm border-2 ${color.border} hover:shadow-md transition transform hover:-translate-y-0.5">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <div class="w-11 h-11 rounded-2xl ${color.light} ${color.border} border-2 text-2xl flex items-center justify-center shrink-0 shadow-xs">
+                                ${r.avatar || '🏃‍♂️'}
                             </div>
-                            <p class="text-[10px] text-slate-500 truncate font-medium">รหัส: <b>${r.empId}</b> • ${r.dept}</p>
-                            <span class="inline-block mt-1 text-[9px] ${color.pill} px-2 py-0.5 rounded-full font-black">
-                                ลู่ #${idx + 1} พร้อมวิ่ง 🚩
-                            </span>
+                            <div class="overflow-hidden text-left flex-1 min-w-0">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="w-2.5 h-2.5 rounded-full ${color.bg} shrink-0"></span>
+                                    <p class="font-extrabold text-xs text-slate-800 truncate">${r.name}</p>
+                                </div>
+                                <p class="text-[10px] text-slate-500 truncate font-medium">รหัส: <b>${r.empId}</b> • ${r.dept}</p>
+                                <span class="inline-block mt-0.5 text-[9px] ${color.pill} px-2 py-0.5 rounded-full font-black">
+                                    ลู่ #${idx + 1} พร้อมวิ่ง 🚩
+                                </span>
+                            </div>
                         </div>
+                        <button onclick="kickRacer('${r.empId}')" class="shrink-0 w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-500 hover:text-rose-700 flex items-center justify-center transition border border-rose-200 cursor-pointer shadow-xs ml-auto" title="นำผู้เล่นนี้ออกจากรอบการแข่ง">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
                     </div>
                 `;
             });
@@ -2950,108 +3626,142 @@ function doPost(e) {<br>
             const grid = document.getElementById('stage-heat-podium-grid');
             if (!grid) return;
 
-            const rankConfigs = [
-                {
-                    rank: 1,
-                    title: "อันดับ 1 (ชนะเลิศรอบนี้)",
-                    badge: "bg-gradient-to-r from-amber-300 to-yellow-300 text-amber-950 font-black",
-                    border: "border-amber-300",
-                    btnClass: "btn-clay-yellow",
-                    bgCard: "bg-gradient-to-b from-[#fffbeb] to-[#fef3c7]",
-                    icon: "👑"
-                },
-                {
-                    rank: 2,
-                    title: "อันดับ 2 (รองชนะเลิศ)",
-                    badge: "bg-gradient-to-r from-sky-200 to-blue-200 text-sky-950 font-black",
-                    border: "border-sky-300",
-                    btnClass: "btn-clay-sky",
-                    bgCard: "bg-gradient-to-b from-[#f0f9ff] to-[#e0f2fe]",
-                    icon: "🥈"
-                },
-                {
-                    rank: 3,
-                    title: "อันดับ 3 (รองอันดับ 2)",
-                    badge: "bg-gradient-to-r from-rose-200 to-orange-200 text-rose-950 font-black",
-                    border: "border-rose-300",
-                    btnClass: "btn-clay-coral",
-                    bgCard: "bg-gradient-to-b from-[#fff1f2] to-[#ffe4e6]",
-                    icon: "🥉"
-                }
-            ];
-
-            grid.innerHTML = '';
-            rankConfigs.forEach((cfg, idx) => {
-                const winner = sortedRacers[idx];
-                if (winner) {
-                    const hasPrize = prizesAwarded[winner.empId];
-                    grid.innerHTML += `
-                        <div class="relative ${cfg.bgCard} rounded-3xl p-5 border-4 ${cfg.border} shadow-2xl flex flex-col justify-between text-slate-800 transition transform hover:-translate-y-1">
-                            <div>
-                                <div class="flex items-center justify-between mb-3">
-                                    <span class="${cfg.badge} text-xs px-3.5 py-1 rounded-full uppercase tracking-wider shadow-xs border border-white/60">
-                                        ${cfg.icon} ${cfg.title}
-                                    </span>
-                                    <span class="text-4xl animate-bounce">${winner.avatar || '🏃‍♂️'}</span>
-                                </div>
-                                <h4 class="text-2xl font-black text-slate-900 mt-1">${winner.name}</h4>
-                                <p class="text-xs text-slate-600 mt-0.5">รหัส: <b>${winner.empId}</b> • แผนก: ${winner.dept}</p>
-                                
-                                <div class="my-4 bg-white/90 rounded-2xl p-3.5 border-2 border-slate-200/60 shadow-inner flex items-center justify-between">
-                                    <span class="text-xs font-bold text-slate-500">สถิติรอบนี้:</span>
-                                    <span class="text-3xl font-black text-teal-600 font-mono">${winner.score} <span class="text-xs font-normal text-slate-500">ก้าว</span></span>
-                                </div>
-                            </div>
-
-                            <div class="mt-2">
-                                ${hasPrize ? `
-                                    <div class="bg-emerald-100 border-2 border-emerald-300 rounded-2xl p-3 flex items-center justify-between shadow-xs">
-                                        <span class="text-xs font-black text-emerald-800 truncate">
-                                            <i class="fa-solid fa-gift mr-1 text-emerald-600"></i> ${hasPrize.prizeName}
-                                        </span>
-                                        <button onclick="openPrizeModal('${winner.empId}', ${cfg.rank})" class="text-xs text-emerald-700 hover:text-emerald-900 underline shrink-0 ml-2 font-bold cursor-pointer">แก้ไข</button>
-                                    </div>
-                                ` : `
-                                    <button onclick="openPrizeModal('${winner.empId}', ${cfg.rank})" class="${cfg.btnClass} w-full py-3.5 font-black text-xs sm:text-sm shadow-lg flex items-center justify-center gap-2 cursor-pointer">
-                                        <i class="fa-solid fa-gift text-sm"></i> <span>มอบของรางวัล</span>
-                                    </button>
-                                `}
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    grid.innerHTML += `
-                        <div class="bg-white/10 border-2 border-dashed border-white/20 rounded-3xl p-5 flex flex-col items-center justify-center text-center min-h-[220px] text-slate-300">
-                            <span class="text-5xl mb-2 opacity-50">${cfg.icon}</span>
-                            <p class="text-sm font-black text-slate-200">${cfg.title}</p>
-                            <p class="text-xs mt-1 text-slate-400">ไม่มีผู้เข้าแข่งขันในอันดับนี้</p>
-                        </div>
-                    `;
-                }
-            });
-
-            // If more than 3 racers in this heat
-            const othersContainer = document.getElementById('stage-heat-others-list');
-            if (sortedRacers.length > 3) {
-                othersContainer.classList.remove('hidden');
-                let othersHtml = `
-                    <div class="bg-white/10 backdrop-blur-md rounded-2xl p-3.5 border-2 border-white/15 mt-3 shadow-md">
-                        <p class="text-xs font-black text-amber-300 mb-2">อันดับผู้เข้าแข่งขันคนอื่นๆ ในรอบนี้:</p>
-                        <div class="flex flex-wrap gap-2">
+            if (!sortedRacers || sortedRacers.length === 0) {
+                grid.innerHTML = `
+                    <div class="bg-white/10 border-2 border-dashed border-white/20 rounded-3xl p-8 text-center text-slate-300">
+                        <p class="text-sm font-bold">ยังไม่มีข้อมูลการแข่งขันในรอบนี้</p>
+                    </div>
                 `;
-                for (let i = 3; i < sortedRacers.length; i++) {
-                    const r = sortedRacers[i];
-                    othersHtml += `
-                        <span class="bg-slate-900/80 px-3 py-1.5 rounded-full text-xs text-slate-200 border border-slate-700/80 font-bold shadow-xs">
-                            #${i + 1} ${r.avatar} ${r.name} (${r.score} ก้าว)
-                        </span>
-                    `;
-                }
-                othersHtml += `</div></div>`;
-                othersContainer.innerHTML = othersHtml;
-            } else if (othersContainer) {
-                othersContainer.classList.add('hidden');
+                return;
             }
+
+            const winner1 = sortedRacers[0];
+            const hasPrize1 = prizesAwarded[winner1?.empId];
+            const others = sortedRacers.slice(1);
+
+            // Check if winner1 has won grand prize previously today
+            const todayStr = new Date().toLocaleDateString('th-TH');
+            const eligibility = checkGrandPrizeEligibility(winner1?.empId, todayStr);
+            const isDuplicate = !eligibility.eligible;
+
+            let html = '';
+
+            // Duplicate Grand Prize Alert Banner
+            if (isDuplicate) {
+                html += `
+                    <div class="w-full bg-amber-500/25 border-2 border-amber-400 rounded-3xl p-4 text-amber-100 text-xs flex flex-col md:flex-row items-center justify-between gap-3 shadow-lg">
+                        <div class="flex items-center gap-3">
+                            <span class="text-3xl">⚠️</span>
+                            <div>
+                                <p class="font-black text-amber-300 text-sm sm:text-base">แจ้งเตือนแอดมิน: คุณ ${winner1.name} (รหัส: ${winner1.empId}) ${eligibility.reason}</p>
+                                <p class="text-[11px] text-amber-100 mt-0.5">ตามกติกาจำกัด 1 สิทธิ์/คน/วัน เพื่อเฉลี่ยให้เพื่อนๆ แอดมินสามารถปรับเป็นรางวัลขนม หรือระบุรางวัลพิเศษให้ได้ค่ะ</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <button onclick="awardAlternatePrize('${winner1.empId}', 'consolation')" class="bg-teal-500 hover:bg-teal-600 text-white font-black px-3.5 py-2 rounded-xl text-xs shadow-xs cursor-pointer flex items-center gap-1.5 transition">
+                                <span>🍬 ปรับเป็นรางวัลขนม</span>
+                            </button>
+                            <button onclick="openPrizeModal('${winner1.empId}', 1)" class="bg-amber-400 hover:bg-amber-500 text-slate-950 font-black px-3.5 py-2 rounded-xl text-xs shadow-xs cursor-pointer flex items-center gap-1.5 transition">
+                                <i class="fa-solid fa-gift"></i> <span>เปลี่ยนรางวัล</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            const activePrizeTitle = isDuplicate 
+                ? (hasPrize1 ? hasPrize1.prizeName : gameRules.consolationPrizeName)
+                : (hasPrize1 ? hasPrize1.prizeName : gameRules.rank1PrizeName);
+
+            html += `
+                <!-- Champion Showcase (Rank 1) -->
+                <div class="bg-gradient-to-br from-[#fffbeb] via-[#fef3c7] to-[#fde68a] text-slate-800 rounded-3xl p-5 sm:p-7 border-4 border-amber-400 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-5 transition transform hover:-translate-y-0.5">
+                    <div class="flex items-center gap-4 sm:gap-5 w-full md:w-auto">
+                        <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-amber-300 text-amber-950 border-4 border-amber-400 flex flex-col items-center justify-center text-4xl sm:text-5xl shrink-0 shadow-md relative">
+                            <span>${winner1.avatar || '🏃‍♂️'}</span>
+                            <span class="absolute -top-3 -right-2 text-2xl animate-bounce">👑</span>
+                        </div>
+                        <div class="min-w-0">
+                            <span class="bg-gradient-to-r from-amber-400 to-yellow-400 text-amber-950 text-xs sm:text-sm font-black px-3.5 py-1 rounded-full uppercase tracking-wider shadow-xs border border-white/60 inline-flex items-center gap-1.5 mb-1.5">
+                                <i class="fa-solid fa-crown text-amber-900"></i> ผู้ชนะเลิศอันดับ 1 ประจำรอบนี้!
+                            </span>
+                            <h3 class="text-2xl sm:text-3xl font-black text-slate-900 truncate">${winner1.name}</h3>
+                            <p class="text-xs sm:text-sm text-slate-600 font-bold mt-0.5">รหัส: <b>${winner1.empId}</b> • แผนก: ${winner1.dept}</p>
+                            <div class="mt-2 inline-flex items-center gap-2 bg-white/90 px-3 py-1 rounded-2xl border-2 border-amber-300 shadow-inner">
+                                <span class="text-xs font-bold text-slate-500">สถิติความเร็ว:</span>
+                                <span class="text-xl sm:text-2xl font-black text-teal-600 font-mono">${winner1.score} <span class="text-xs font-normal text-slate-500">ก้าว</span></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col items-center md:items-end justify-center text-center md:text-right shrink-0 bg-white/80 p-4 rounded-3xl border-2 border-amber-300 shadow-sm w-full md:w-80">
+                        <span class="text-xs font-extrabold text-amber-800 uppercase tracking-wide">รางวัลรอบนี้:</span>
+                        <p class="text-base sm:text-lg font-black text-amber-950 mt-1 flex items-center gap-1.5">
+                            <span>${isDuplicate ? '🍬' : '🎉'} ${activePrizeTitle}</span>
+                        </p>
+                        <p class="text-[11px] text-slate-500 mt-0.5">
+                            ${isDuplicate ? '(เคยได้รับสิทธิ์จับฉลากแล้วในรอบก่อนหน้าของวันนี้)' : 'รับสิทธิ์จับฉลากลุ้นรางวัลใหญ่ประจำงาน'}
+                        </p>
+                        <div class="mt-2.5 w-full">
+                            ${hasPrize1 ? `
+                                <div class="bg-emerald-100 border-2 border-emerald-300 rounded-2xl px-3 py-1.5 text-xs font-black text-emerald-800 flex items-center justify-between shadow-xs">
+                                    <span class="truncate"><i class="fa-solid fa-circle-check text-emerald-600"></i> ${hasPrize1.prizeName}</span>
+                                    <button onclick="openPrizeModal('${winner1.empId}', 1)" class="underline text-emerald-700 ml-2 font-bold cursor-pointer shrink-0">แก้ไข</button>
+                                </div>
+                            ` : `
+                                <button onclick="openPrizeModal('${winner1.empId}', 1)" class="btn-clay-yellow w-full py-2.5 px-3 font-black text-xs shadow-md flex items-center justify-center gap-1.5 cursor-pointer">
+                                    <i class="fa-solid fa-gift"></i> <span>บันทึกมอบรางวัล</span>
+                                </button>
+                            `}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Consolation Snacks for ALL other participants (Rank 2+)
+            if (others.length > 0) {
+                html += `
+                    <div class="bg-white/95 rounded-3xl p-5 border-4 border-teal-200 shadow-xl text-slate-800">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b-2 border-teal-100 gap-2">
+                            <div class="flex items-center gap-2">
+                                <span class="text-2xl">🍬</span>
+                                <div>
+                                    <h4 class="text-sm sm:text-base font-black text-slate-900">
+                                        รางวัลปลอบใจสำหรับผู้เข้าร่วมทุกคน (อันดับ 2 ขึ้นไป - รวม ${others.length} คน)
+                                    </h4>
+                                    <p class="text-xs text-slate-500 font-medium">ได้รับ "${gameRules.consolationPrizeName}" ทุกคนค่ะ 🥨🍪🍭 รับได้ที่หน้าบูธทันที</p>
+                                </div>
+                            </div>
+                            <span class="bg-teal-100 text-teal-800 text-xs font-black px-3 py-1 rounded-full shrink-0 inline-flex items-center gap-1">
+                                <i class="fa-solid fa-cookie-bite text-teal-600"></i> รับขนมทุกคน
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 mt-3.5">
+                `;
+
+                others.forEach((r, idx) => {
+                    const actualRank = idx + 2;
+                    html += `
+                        <div class="bg-slate-50 rounded-2xl p-2.5 border-2 border-slate-200 flex items-center justify-between shadow-xs">
+                            <div class="flex items-center gap-2 overflow-hidden min-w-0">
+                                <span class="w-6 h-6 rounded-lg bg-slate-200 text-slate-700 font-black text-xs flex items-center justify-center shrink-0">#${actualRank}</span>
+                                <span class="text-2xl shrink-0">${r.avatar || '🏃'}</span>
+                                <div class="overflow-hidden min-w-0">
+                                    <p class="font-extrabold text-xs text-slate-800 truncate">${r.name}</p>
+                                    <p class="text-[10px] text-slate-500 truncate">${r.dept} • <b>${r.score}</b> ก้าว</p>
+                                </div>
+                            </div>
+                            <span class="shrink-0 text-[10px] bg-amber-100 text-amber-800 font-black px-2 py-0.5 rounded-full ml-2">🍬 รับขนม</span>
+                        </div>
+                    `;
+                });
+
+                html += `</div></div>`;
+            }
+
+            grid.innerHTML = html;
+            const othersContainer = document.getElementById('stage-heat-others-list');
+            if (othersContainer) othersContainer.classList.add('hidden');
         }
 
         // =====================================================================
@@ -3226,6 +3936,41 @@ function doPost(e) {<br>
             document.getElementById('result-kcal').textContent = (currentScore * 0.045).toFixed(1);
             document.getElementById('result-rounds').textContent = myOverall ? myOverall.rounds : 1;
 
+            // Updated Dynamic Prize Box (Rank 1: Lucky Draw Ticket vs Consolation if duplicate, Rank 2+: Snacks)
+            const prizeBox = document.getElementById('result-prize-box');
+            if (prizeBox) {
+                if (heatRank === 1) {
+                    const todayStr = new Date().toLocaleDateString('th-TH');
+                    const eligibility = checkGrandPrizeEligibility(currentPlayer.id, todayStr);
+                    if (eligibility.eligible) {
+                        prizeBox.className = "bg-gradient-to-r from-amber-100 via-yellow-100 to-amber-200 border-2 border-amber-400 rounded-3xl p-4 my-3 text-center shadow-md animate-pulse";
+                        prizeBox.innerHTML = `
+                            <div class="text-3xl mb-1">👑 🎁</div>
+                            <p class="text-xs font-black text-amber-900 uppercase tracking-wider">🎉 ยินดีด้วยค่ะ! คุณชนะเลิศอันดับ 1 ของรอบนี้</p>
+                            <p class="text-base sm:text-lg font-black text-amber-950 mt-1">ได้รับ "${gameRules.rank1PrizeName}" 🎟️</p>
+                            <p class="text-xs text-amber-800 mt-1">ติดต่อรับสิทธิ์จับฉลากที่เจ้าหน้าที่แอดมินประจำบูธได้เลยค่ะ!</p>
+                        `;
+                    } else {
+                        prizeBox.className = "bg-gradient-to-r from-amber-50 via-teal-50 to-emerald-50 border-2 border-teal-300 rounded-3xl p-4 my-3 text-center shadow-md";
+                        prizeBox.innerHTML = `
+                            <div class="text-3xl mb-1">👑 🍬</div>
+                            <p class="text-xs font-black text-teal-900 uppercase tracking-wider">🎉 ยินดีด้วยค่ะ! คุณชนะเลิศอันดับ 1 ของรอบนี้</p>
+                            <p class="text-xs font-black text-amber-900 mt-0.5">ℹ️ วันนี้คุณได้รับสิทธิ์จับฉลากรางวัลใหญ่ไปแล้วในรอบก่อนหน้า ✨</p>
+                            <p class="text-base font-black text-teal-950 mt-1">ในรอบนี้คุณจึงได้รับรางวัลพิเศษ: "${gameRules.consolationPrizeName}" 🍪</p>
+                            <p class="text-xs text-teal-700 mt-1">เดินไปรับขนมกับเจ้าหน้าที่แอดมินประจำบูธได้เลยนะคะ (มาร่วมสนุกรับขนมได้ทุกรอบเลยค่ะ!)</p>
+                        `;
+                    }
+                } else {
+                    prizeBox.className = "bg-gradient-to-r from-teal-50 to-emerald-50 border-2 border-teal-300 rounded-3xl p-4 my-3 text-center shadow-sm";
+                    prizeBox.innerHTML = `
+                        <div class="text-3xl mb-1">🍬 🥨</div>
+                        <p class="text-xs font-black text-teal-900 uppercase tracking-wider">ขอบคุณที่มาร่วมสนุกนะคะ!</p>
+                        <p class="text-base sm:text-lg font-black text-teal-950 mt-1">คุณได้รับรางวัลปลอบใจ: "${gameRules.consolationPrizeName}" 🍪</p>
+                        <p class="text-xs text-teal-700 mt-1">เดินไปรับขนมกับเจ้าหน้าที่แอดมินประจำบูธได้เลยนะคะ ✨</p>
+                    `;
+                }
+            }
+
             const rankBanner = document.getElementById('result-rank-banner');
             const rankText = document.getElementById('result-rank-text');
             if (myOverall && myOverall.rank <= 3) {
@@ -3265,9 +4010,9 @@ function doPost(e) {<br>
         // =====================================================================
         // ADMIN DASHBOARD, LEADERBOARD & PRIZES
         // =====================================================================
-        function getAggregatedStandings() {
+        function getAggregatedStandings(sourceLogs = playLogs) {
             const map = {};
-            playLogs.forEach(log => {
+            sourceLogs.forEach(log => {
                 const cleanId = String(log.empId || '').trim().replace(/^'/, '');
                 const strippedKey = cleanId.replace(/^0+/, '') || cleanId;
 
@@ -3299,21 +4044,165 @@ function doPost(e) {<br>
         }
 
         window.renderAdminDashboard = function() {
-            const standings = getAggregatedStandings();
+            // 1. Render Daily 3-Day Statistics Breakdown
+            const dailyStats = getDailyStatistics();
+            const dailyFilterSelect = document.getElementById('admin-daily-filter');
+            const selectedDateFilter = dailyFilterSelect ? dailyFilterSelect.value : 'all';
+
+            // Populate daily filter dropdown if options changed
+            if (dailyFilterSelect) {
+                const currentVal = dailyFilterSelect.value;
+                let optHtml = `<option value="all">📅 รวมทุกวัน (All 3 Days)</option>`;
+                dailyStats.forEach((day, idx) => {
+                    optHtml += `<option value="${day.date}" ${currentVal === day.date ? 'selected' : ''}>วันที่ ${idx + 1}: ${day.date} ${day.isToday ? '(วันนี้)' : ''}</option>`;
+                });
+                dailyFilterSelect.innerHTML = optHtml;
+                if (currentVal && dailyStats.some(d => d.date === currentVal)) {
+                    dailyFilterSelect.value = currentVal;
+                }
+            }
+
+            // Render Daily Cards (Day 1, Day 2, Day 3)
+            const dailyCardsGrid = document.getElementById('admin-daily-cards-grid');
+            if (dailyCardsGrid) {
+                if (dailyStats.length === 0) {
+                    dailyCardsGrid.innerHTML = `
+                        <div class="col-span-full py-6 text-center text-slate-400 text-xs">
+                            ยังไม่มีข้อมูลการเล่นในแต่ละวัน (เมื่อมีผู้เล่นรอบแรก สถิติรายวันจะขึ้นที่นี่ทันทีค่ะ)
+                        </div>
+                    `;
+                } else {
+                    dailyCardsGrid.innerHTML = '';
+                    dailyStats.forEach((day, idx) => {
+                        const isFiltered = selectedDateFilter !== 'all' && selectedDateFilter !== day.date;
+                        dailyCardsGrid.innerHTML += `
+                            <div class="bg-white rounded-2xl p-4 border-2 ${day.isToday ? 'border-amber-400 ring-2 ring-amber-200' : 'border-amber-200/80'} shadow-sm ${isFiltered ? 'opacity-40' : ''} transition">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-xs font-black ${day.isToday ? 'bg-amber-400 text-amber-950' : 'bg-slate-100 text-slate-700'} px-2.5 py-0.5 rounded-full">
+                                        วันที่ ${idx + 1}: ${day.date} ${day.isToday ? '⭐ วันนี้' : ''}
+                                    </span>
+                                    <span class="text-[11px] text-slate-500 font-bold">เล่น ${day.uniqueRacers.size} คน</span>
+                                </div>
+                                <div class="mt-2 space-y-1.5">
+                                    <div class="flex items-baseline justify-between">
+                                        <span class="text-xs text-slate-600 font-bold">ยอดเล่นรวม (คนซ้ำ):</span>
+                                        <span class="text-2xl font-black text-teal-600 font-mono">${day.totalPlays} <span class="text-xs font-normal text-slate-400">รอบ/ชิ้น</span></span>
+                                    </div>
+                                    <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                                        <span class="text-amber-800 font-black">👑 รางวัลที่ 1: <b>${day.rank1Count}</b> สิทธิ์</span>
+                                        <span class="text-teal-800 font-black">🍬 ขนม: <b>${day.consolationCount}</b> ชิ้น</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+            }
+
+            // Render Daily Breakdown Table
+            const dailyTableBody = document.getElementById('admin-daily-table-body');
+            if (dailyTableBody) {
+                if (dailyStats.length === 0) {
+                    dailyTableBody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-slate-400 text-xs">ยังไม่มีข้อมูลสถิติรายวัน</td></tr>`;
+                } else {
+                    let rowsHtml = '';
+                    let grandPlays = 0;
+                    let grandRank1 = 0;
+                    let grandConso = 0;
+                    const allUniqueSet = new Set();
+
+                    dailyStats.forEach((day, idx) => {
+                        grandPlays += day.totalPlays;
+                        grandRank1 += day.rank1Count;
+                        grandConso += day.consolationCount;
+                        day.uniqueRacers.forEach(id => allUniqueSet.add(id));
+                        const avgPerPerson = day.uniqueRacers.size > 0 ? (day.totalPlays / day.uniqueRacers.size).toFixed(1) : '0';
+                        const isSelected = selectedDateFilter === day.date;
+
+                        rowsHtml += `
+                            <tr class="hover:bg-amber-50/50 transition ${isSelected ? 'bg-amber-100/50 font-bold' : ''}">
+                                <td class="py-2.5 px-3.5 font-bold text-slate-800">
+                                    วันที่ ${idx + 1} (${day.date}) ${day.isToday ? '<span class="text-[10px] bg-amber-300 text-amber-950 font-black px-1.5 py-0.2 rounded ml-1">วันนี้</span>' : ''}
+                                </td>
+                                <td class="py-2.5 px-3.5 text-center font-black text-teal-700 text-sm font-mono">${day.totalPlays} ครั้ง</td>
+                                <td class="py-2.5 px-3.5 text-center font-bold text-slate-700">${day.uniqueRacers.size} คน</td>
+                                <td class="py-2.5 px-3.5 text-center font-black text-amber-700 bg-amber-50/70 font-mono">${day.rank1Count} สิทธิ์</td>
+                                <td class="py-2.5 px-3.5 text-center font-black text-teal-700 bg-teal-50/50 font-mono">${day.consolationCount} ชิ้น</td>
+                                <td class="py-2.5 px-3.5 text-right font-bold text-slate-500">${avgPerPerson} รอบ</td>
+                            </tr>
+                        `;
+                    });
+
+                    // Grand Total Row
+                    const grandAvg = allUniqueSet.size > 0 ? (grandPlays / allUniqueSet.size).toFixed(1) : '0';
+                    rowsHtml += `
+                        <tr class="bg-amber-200/40 font-black text-slate-900 border-t-2 border-amber-300">
+                            <td class="py-3 px-3.5 text-amber-950">⭐ รวมทั้งงาน (3 วัน)</td>
+                            <td class="py-3 px-3.5 text-center text-teal-800 text-base font-mono">${grandPlays} ครั้ง</td>
+                            <td class="py-3 px-3.5 text-center text-slate-800">${allUniqueSet.size} คน</td>
+                            <td class="py-3 px-3.5 text-center text-amber-900 bg-amber-100/80 text-base font-mono">${grandRank1} สิทธิ์</td>
+                            <td class="py-3 px-3.5 text-center text-teal-900 bg-teal-100/50 text-base font-mono">${grandConso} ชิ้น</td>
+                            <td class="py-3 px-3.5 text-right text-slate-700">${grandAvg} รอบ</td>
+                        </tr>
+                    `;
+                    dailyTableBody.innerHTML = rowsHtml;
+                }
+            }
+
+            // 2. Active Logs for Table View (Filtered or All)
+            const activeLogsForView = selectedDateFilter === 'all'
+                ? playLogs
+                : playLogs.filter(l => extractDateFromLog(l) === selectedDateFilter);
+
+            const standings = getAggregatedStandings(activeLogsForView);
             const searchQuery = document.getElementById('admin-search').value.trim().toLowerCase();
 
             document.getElementById('stat-unique-players').textContent = standings.length;
-            document.getElementById('stat-total-rounds').textContent = playLogs.length;
+            document.getElementById('stat-total-rounds').textContent = activeLogsForView.length;
             document.getElementById('db-count').textContent = Object.keys(employeeDB).length;
             
             const awardedCount = Object.keys(prizesAwarded).length;
-            document.getElementById('stat-prizes-given').innerHTML = `${awardedCount} <span class="text-xs font-normal text-slate-400">/ 3</span>`;
+            document.getElementById('stat-prizes-given').innerHTML = `${awardedCount} <span class="text-xs font-normal text-slate-400">สิทธิ์ / รางวัล</span>`;
+
+            // Admin Live Lobby Racers Panel (View racers waiting in lobby & kick button)
+            const adminLobbyCount = document.getElementById('admin-live-lobby-count');
+            const adminLobbyList = document.getElementById('admin-live-lobby-list');
+            const lobbyRacers = Object.values(activeRacers);
+            if (adminLobbyCount) adminLobbyCount.textContent = lobbyRacers.length;
+            if (adminLobbyList) {
+                if (lobbyRacers.length === 0) {
+                    adminLobbyList.innerHTML = `
+                        <div class="col-span-full py-4 text-center text-slate-400 text-xs">
+                            ยังไม่มีผู้เล่นรอในสนามรอบนี้ (สแกน QR Code หน้าเวที หรือกด "+ จำลอง 6 คน")
+                        </div>
+                    `;
+                } else {
+                    adminLobbyList.innerHTML = '';
+                    lobbyRacers.forEach((r, idx) => {
+                        const color = LANE_COLORS[r.colorIdx % LANE_COLORS.length];
+                        adminLobbyList.innerHTML += `
+                            <div class="bg-slate-50 border-2 ${color.border} rounded-2xl p-2.5 flex items-center justify-between gap-2 shadow-xs">
+                                <div class="flex items-center gap-2 overflow-hidden min-w-0">
+                                    <span class="text-xl shrink-0">${r.avatar || '🏃'}</span>
+                                    <div class="overflow-hidden min-w-0">
+                                        <p class="font-extrabold text-xs text-slate-800 truncate">${r.name}</p>
+                                        <p class="text-[10px] text-slate-500 truncate font-mono">${r.empId} • ${r.dept}</p>
+                                    </div>
+                                </div>
+                                <button onclick="kickRacer('${r.empId}')" class="shrink-0 px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-[11px] font-bold border border-rose-200 transition cursor-pointer flex items-center gap-1" title="ลบผู้เล่นนี้ออกจากรอบการแข่ง">
+                                    <i class="fa-solid fa-trash-can text-[10px]"></i> ลบ
+                                </button>
+                            </div>
+                        `;
+                    });
+                }
+            }
 
             // Top 3 Podium
             const podiumGrid = document.getElementById('top3-podium-grid');
             podiumGrid.innerHTML = '';
             const rankStyles = [
-                { rank: 1, title: "อันดับ 1 (ชนะเลิศ)", badge: "bg-amber-300 text-amber-950 font-black", border: "border-amber-300", bgCard: "bg-gradient-to-b from-[#fffbeb] to-[#fef3c7]", btnClass: "btn-clay-yellow", icon: "👑" },
+                { rank: 1, title: "อันดับ 1 (ชนะเลิศ - รางวัลใหญ่)", badge: "bg-amber-300 text-amber-950 font-black", border: "border-amber-300", bgCard: "bg-gradient-to-b from-[#fffbeb] to-[#fef3c7]", btnClass: "btn-clay-yellow", icon: "👑" },
                 { rank: 2, title: "อันดับ 2 (รองชนะเลิศอันดับ 1)", badge: "bg-sky-200 text-sky-950 font-black", border: "border-sky-300", bgCard: "bg-gradient-to-b from-[#f0f9ff] to-[#e0f2fe]", btnClass: "btn-clay-sky", icon: "🥈" },
                 { rank: 3, title: "อันดับ 3 (รองชนะเลิศอันดับ 2)", badge: "bg-rose-200 text-rose-950 font-black", border: "border-rose-300", bgCard: "bg-gradient-to-b from-[#fff1f2] to-[#ffe4e6]", btnClass: "btn-clay-coral", icon: "🥉" }
             ];
@@ -3346,7 +4235,7 @@ function doPost(e) {<br>
                                     </div>
                                 ` : `
                                     <button onclick="openPrizeModal('${winner.empId}', ${style.rank})" class="${style.btnClass} w-full py-3 font-black text-xs shadow-md cursor-pointer flex items-center justify-center gap-1.5">
-                                        <i class="fa-solid fa-gift text-sm"></i> <span>บันทึกการมอบรางวัล</span>
+                                        <i class="fa-solid fa-gift text-sm"></i> <span>${style.rank === 1 ? gameRules.rank1PrizeName : 'บันทึกการมอบรางวัล'}</span>
                                     </button>
                                 `}
                             </div>
@@ -3392,9 +4281,9 @@ function doPost(e) {<br>
                             <td class="py-3 px-4">
                                 ${prizeInfo 
                                     ? `<span class="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-1 rounded-lg"><i class="fa-solid fa-gift"></i> ${prizeInfo.prizeName}</span>` 
-                                    : (p.rank <= 3 
-                                        ? `<button onclick="openPrizeModal('${p.empId}', ${p.rank})" class="text-xs text-amber-600 hover:underline font-semibold">+ รอมอบรางวัล</button>`
-                                        : `<span class="text-xs text-slate-400">-</span>`)}
+                                    : (p.rank === 1 
+                                        ? `<button onclick="openPrizeModal('${p.empId}', 1)" class="text-xs bg-amber-100 hover:bg-amber-200 text-amber-900 font-black px-2.5 py-1 rounded-lg transition border border-amber-300">👑 ${gameRules.rank1PrizeName}</button>`
+                                        : `<span class="inline-flex items-center gap-1 bg-teal-50 text-teal-800 text-xs font-bold px-2.5 py-0.5 rounded-lg border border-teal-200">🍬 ${gameRules.consolationPrizeName}</span>`)}
                             </td>
                         </tr>
                     `;
@@ -3402,23 +4291,28 @@ function doPost(e) {<br>
             }
 
             // Chronological Round Logs
-            document.getElementById('log-total-count').textContent = playLogs.length;
+            document.getElementById('log-total-count').textContent = activeLogsForView.length;
             const logList = document.getElementById('round-history-list');
             logList.innerHTML = '';
-            if (playLogs.length === 0) {
+            if (activeLogsForView.length === 0) {
                 logList.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">ยังไม่มีประวัติการเล่น</p>`;
             } else {
-                [...playLogs].reverse().forEach(log => {
+                [...activeLogsForView].reverse().forEach(log => {
+                    const prizeTag = log.prize || (prizesAwarded[log.empId]?.prizeName) || (log.heatRank === 1 ? gameRules.rank1PrizeName : gameRules.consolationPrizeName);
+                    const isDup = log.isDuplicateWin;
                     logList.innerHTML += `
                         <div class="flex items-center justify-between bg-slate-50 px-3.5 py-2 rounded-xl text-xs border border-slate-100">
-                            <div class="flex items-center gap-2.5">
-                                <span class="bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded text-[10px]">รอบที่ #${log.roundId}</span>
-                                <span class="font-bold text-slate-800">${log.name}</span>
-                                <span class="text-slate-400">(${log.empId} • ${log.dept})</span>
+                            <div class="flex items-center gap-2.5 overflow-hidden min-w-0">
+                                <span class="bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded text-[10px] shrink-0">รอบที่ #${log.roundId}</span>
+                                <span class="font-bold text-slate-800 truncate">${log.name}</span>
+                                <span class="text-slate-400 text-[11px] truncate">(${log.empId} • ${log.dept})</span>
+                                <span class="text-[10px] ${isDup ? 'bg-amber-50 text-amber-900 border border-amber-300' : (log.heatRank === 1 ? 'bg-amber-100 text-amber-800' : 'bg-teal-50 text-teal-700')} px-2 py-0.5 rounded font-bold shrink-0">
+                                    ${isDup ? '⚠️ ' : ''}${prizeTag}
+                                </span>
                             </div>
-                            <div class="flex items-center gap-3">
+                            <div class="flex items-center gap-3 shrink-0 ml-2">
                                 <span class="font-extrabold text-emerald-600">${log.score} คะแนน</span>
-                                <span class="text-[11px] text-slate-400">${log.timestamp}</span>
+                                <span class="text-[11px] text-slate-400 font-mono">${log.timestamp || '-'}</span>
                             </div>
                         </div>
                     `;
@@ -3457,7 +4351,8 @@ function doPost(e) {<br>
             document.getElementById('modal-winner-dept').textContent = `${winner.dept} • คะแนน: ${winner.bestScore || 0}`;
             
             const existing = prizesAwarded[empId];
-            document.getElementById('prize-name-input').value = existing ? existing.prizeName : `รางวัลอันดับที่ ${rank}`;
+            const defaultForRank = rank === 1 ? gameRules.rank1PrizeName : gameRules.consolationPrizeName;
+            document.getElementById('prize-name-input').value = existing ? existing.prizeName : defaultForRank;
             document.getElementById('prize-modal').classList.remove('hidden');
         };
 
@@ -3479,6 +4374,7 @@ function doPost(e) {<br>
                 awardedAt: new Date().toLocaleTimeString('th-TH')
             };
             prizesAwarded[selectedWinnerForPrize.empId] = prizeData;
+            localStorage.setItem('health_sprint_prizes', JSON.stringify(prizesAwarded));
 
             broadcastSyncMessage({
                 type: 'PRIZE_AWARD',
@@ -3585,6 +4481,154 @@ function doPost(e) {<br>
         };
 
         // =====================================================================
+        // SYNC & IMPORT LOGS FROM GOOGLE SHEETS
+        // =====================================================================
+        window.openImportLogsModal = function() {
+            const modal = document.getElementById('import-logs-modal');
+            if (modal) modal.classList.remove('hidden');
+        };
+
+        window.closeImportLogsModal = function() {
+            const modal = document.getElementById('import-logs-modal');
+            if (modal) modal.classList.add('hidden');
+        };
+
+        window.executeImportPastedLogs = function() {
+            const textarea = document.getElementById('paste-logs-input');
+            const text = textarea ? textarea.value : '';
+            importLogsFromText(text);
+        };
+
+        window.importLogsFromText = function(text) {
+            if (!text || !text.trim()) {
+                showToast("กรุณาวางข้อมูลจาก Google Sheets ก่อนกดบันทึกค่ะ", "warning");
+                return;
+            }
+
+            const lines = text.trim().split(/\r?\n/);
+            const parsed = [];
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                // Skip header lines
+                if (line.includes('วัน-เวลา') || line.includes('รหัสพนักงาน') || line.includes('คะแนนรอบนี้') || line.includes('Timestamp')) {
+                    continue;
+                }
+
+                let parts = line.split('\t');
+                if (parts.length < 3) {
+                    parts = line.split(',');
+                }
+
+                if (parts.length >= 3) {
+                    let dateTime = '';
+                    let empId = '';
+                    let name = '';
+                    let dept = '';
+                    let score = 0;
+
+                    if (parts.length >= 5) {
+                        dateTime = String(parts[0] || '').trim();
+                        empId = String(parts[1] || '').trim().replace(/^'/, '').replace(/["=]/g, '');
+                        name = String(parts[2] || '').trim().replace(/^"/, '').replace(/"$/, '');
+                        dept = String(parts[3] || '').trim().replace(/^"/, '').replace(/"$/, '');
+                        score = parseInt(String(parts[4] || '0').trim().replace(/[^0-9]/g, '')) || 0;
+                    } else if (parts.length === 4) {
+                        empId = String(parts[0] || '').trim().replace(/^'/, '').replace(/["=]/g, '');
+                        name = String(parts[1] || '').trim().replace(/^"/, '').replace(/"$/, '');
+                        dept = String(parts[2] || '').trim().replace(/^"/, '').replace(/"$/, '');
+                        score = parseInt(String(parts[3] || '0').trim().replace(/[^0-9]/g, '')) || 0;
+                        dateTime = new Date().toLocaleDateString('th-TH') + ' ' + new Date().toLocaleTimeString('th-TH');
+                    }
+
+                    if (empId) {
+                        parsed.push({
+                            roundId: parsed.length + 1,
+                            empId: empId,
+                            name: name || employeeDB[empId]?.name || 'พนักงาน',
+                            dept: dept || employeeDB[empId]?.dept || '-',
+                            score: score,
+                            dateTime: dateTime,
+                            timestamp: dateTime.indexOf(' ') > -1 ? dateTime.split(' ')[1] : dateTime
+                        });
+                    }
+                }
+            }
+
+            if (parsed.length === 0) {
+                showToast("ไม่พบข้อมูล กรุณาคัดลอกจากแท็บ GameLogs ใน Google Sheets มาวางค่ะ", "warning");
+                return;
+            }
+
+            playLogs = parsed;
+            localStorage.setItem('health_sprint_play_logs', JSON.stringify(playLogs));
+            renderAdminDashboard();
+            closeImportLogsModal();
+            showToast(`นำเข้าประวัติสำเร็จ ${playLogs.length} รอบ! ข้อมูลขึ้นแดชบอร์ดเรียบร้อยแล้วค่ะ 🎉`, "success");
+        };
+
+        window.syncLogsFromGoogleSheets = async function() {
+            const btn = document.getElementById('btn-sync-logs');
+            if (btn) btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> กำลังซิงก์...`;
+
+            try {
+                const response = await fetch(googleScriptUrl, { redirect: 'follow' });
+                const text = await response.text();
+                const result = JSON.parse(text);
+
+                if (result.status === "success") {
+                    if (result.employees) {
+                        const normalizedMap = {};
+                        Object.values(result.employees).forEach(emp => {
+                            const rawKey = String(emp.id || "").trim();
+                            if (rawKey) normalizedMap[rawKey] = { id: rawKey, name: emp.name, dept: emp.dept };
+                        });
+                        employeeDB = { ...employeeDB, ...normalizedMap };
+                    }
+
+                    if (result.logs && Array.isArray(result.logs)) {
+                        playLogs = result.logs.map((l, idx) => ({
+                            roundId: l.roundId || idx + 1,
+                            empId: String(l.empId || '').trim().replace(/^'/, ''),
+                            name: l.name || employeeDB[String(l.empId).replace(/^'/, '')]?.name || 'พนักงาน',
+                            dept: l.dept || employeeDB[String(l.empId).replace(/^'/, '')]?.dept || '-',
+                            score: Number(l.score) || 0,
+                            heatRank: Number(l.heatRank) || (idx === 0 ? 1 : 2),
+                            prize: l.prize || (idx === 0 ? gameRules.rank1PrizeName : gameRules.consolationPrizeName),
+                            timestamp: l.timestamp || '-',
+                            dateTime: l.dateTime || '-'
+                        }));
+                        localStorage.setItem('health_sprint_play_logs', JSON.stringify(playLogs));
+                        if (playLogs.length === 0) {
+                            prizesAwarded = {};
+                            localStorage.removeItem('health_sprint_prizes');
+                        }
+                        renderAdminDashboard();
+                        renderAllLiveViews();
+
+                        if (playLogs.length === 0) {
+                            showToast("ซิงก์สำเร็จ! ใน Google Sheet ไม่มีข้อมูลประวัติ (ถูกลบออกแล้ว) ระบบจึงล้างประวัติในเกมให้เป็น 0 รอบให้ตรงกันเรียบร้อยค่ะ ✨", "success");
+                        } else {
+                            showToast(`ซิงก์ประวัติการเล่นสำเร็จ ${playLogs.length} รอบจาก Google Sheets ให้เป็นปัจจุบันเรียบร้อยค่ะ! 🎉`, "success");
+                        }
+                    } else {
+                        // Current Apps Script does not return logs yet
+                        showToast("ยังไม่มีข้อมูลส่งกลับมาจาก Google Apps Script ค่ะ", "warning");
+                        openImportLogsModal();
+                    }
+                } else {
+                    showToast("ไม่สามารถเชื่อมต่อ Google Sheets ได้ค่ะ", "error");
+                }
+            } catch (err) {
+                console.warn("Sync logs error:", err);
+                showToast("เกิดข้อผิดพลาดในการซิงก์: " + err.message, "error");
+            } finally {
+                if (btn) btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-down text-amber-800"></i> ซิงก์ประวัติจาก Google Sheet`;
+            }
+        };
+
+        // =====================================================================
         // CSV EXPORT (PRESERVES LEADING ZERO & UTF-8 THAI SUPPORT)
         // =====================================================================
         window.exportToCSV = function() {
@@ -3597,7 +4641,7 @@ function doPost(e) {<br>
             csvContent += "ลำดับ,วัน-เวลา,รหัสพนักงาน,ชื่อ - นามสกุล,แผนก,คะแนนรอบนี้ (ก้าว),รางวัลที่ได้รับ\n";
 
             playLogs.forEach((log, idx) => {
-                const prize = prizesAwarded[log.empId]?.prizeName || "-";
+                const prize = log.prize || prizesAwarded[log.empId]?.prizeName || (log.heatRank === 1 ? gameRules.rank1PrizeName : gameRules.consolationPrizeName);
                 const cleanEmpId = String(log.empId || "").replace(/^'/, "");
                 const safeName = (log.name || "-").replace(/"/g, '""');
                 const safeDept = (log.dept || "-").replace(/"/g, '""');
