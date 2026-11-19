@@ -351,6 +351,26 @@
             </div>
         </div>
 
+        <!-- STAGE DAILY HIGH SCORE CHAMPION BANNER (3-Day Daily Record) -->
+        <div id="stage-daily-record-pill" class="bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 text-slate-900 px-4 py-2.5 rounded-2xl border-4 border-white shadow-lg flex flex-col sm:flex-row items-center justify-between gap-2.5 text-xs sm:text-sm">
+            <div class="flex items-center gap-2.5 w-full sm:w-auto">
+                <div class="w-8 h-8 rounded-full bg-amber-500/30 flex items-center justify-center text-xl shrink-0 animate-bounce">
+                    👑
+                </div>
+                <div>
+                    <span class="bg-amber-950/20 text-amber-950 text-[10px] sm:text-xs font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider inline-flex items-center gap-1">
+                        <i class="fa-solid fa-fire text-amber-900"></i> สถิติคะแนนสูงสุดประจำวัน (<span id="stage-daily-date-label">วันนี้</span>)
+                    </span>
+                    <span id="stage-daily-record-text" class="block sm:inline ml-0 sm:ml-2 font-black text-slate-950 text-xs sm:text-sm mt-0.5 sm:mt-0">
+                        ยังไม่มีสถิติวันนี้ — มาร่วมเป็นคนแรกที่สร้างสถิติกันเถอะ! 🏃‍♂️💨
+                    </span>
+                </div>
+            </div>
+            <span class="text-[11px] text-amber-950 font-black bg-white/70 px-3 py-1 rounded-xl shadow-xs shrink-0 hidden sm:inline-flex items-center gap-1 border border-amber-300/60">
+                ⚡ ชวนเพื่อนมาพิชิตและทำลายสถิติบูธ!
+            </span>
+        </div>
+
         <!-- LOBBY & QR CODE CHECK-IN SECTION (Visible during lobby - Responsive for Mobile / iPad / PC) -->
         <div id="stage-lobby-view" class="clay-card-warm p-4 sm:p-7 border-4 border-white shadow-xl transition-all">
             <div class="grid grid-cols-1 md:grid-cols-12 gap-5 sm:gap-6 items-center">
@@ -402,6 +422,17 @@
                         <p class="text-xs text-slate-500 mt-1">
                             พนักงานที่สแกน QR Code แล้วเลือกตัวละครจะปรากฏที่นี่แบบเรียลไทม์
                         </p>
+                    </div>
+
+                    <!-- Daily High Score Target in Lobby -->
+                    <div id="lobby-daily-record-banner" class="bg-gradient-to-r from-amber-100/90 via-yellow-100 to-amber-100/90 border-2 border-amber-300 rounded-2xl p-2.5 flex items-center justify-between text-xs font-bold text-amber-950 shadow-xs">
+                        <div class="flex items-center gap-2">
+                            <span class="text-lg animate-bounce">👑</span>
+                            <span id="lobby-daily-record-text" class="font-extrabold text-amber-950">
+                                ⚡ ยังไม่มีสถิติวันนี้ — ใครจะเป็นคนแรกที่พิชิตสถิติก้าวสูงสุด!
+                            </span>
+                        </div>
+                        <span class="text-[10px] bg-amber-200/80 px-2 py-0.5 rounded-full font-black text-amber-900 hidden sm:inline">เป้าหมายประจำวัน</span>
                     </div>
 
                     <!-- Live Racers Grid (Dynamic for unlimited racers, 6+ fits cleanly) -->
@@ -609,6 +640,18 @@
             <!-- Live list of racers in this heat -->
             <div id="waiting-racers-list" class="my-3 bg-slate-50/80 rounded-2xl p-3 border-2 border-slate-100 max-h-36 overflow-y-auto space-y-1.5 text-left shadow-inner">
                 <!-- Populated dynamically -->
+            </div>
+
+            <!-- Daily High Score Target Banner in Mobile Waiting Room -->
+            <div id="waiting-daily-record-box" class="my-3 bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-300 rounded-2xl p-2.5 text-center shadow-xs">
+                <div class="flex items-center justify-center gap-1.5 text-xs font-black text-amber-900">
+                    <span class="text-base animate-bounce">👑</span>
+                    <span>สถิติสูงสุดประจำวัน (<span id="waiting-daily-date-label">วันนี้</span>)</span>
+                </div>
+                <p id="waiting-daily-record-text" class="text-xs font-black text-amber-950 mt-1">
+                    ยังไม่มีสถิติวันนี้ — มาร่วมเป็นคนแรกที่สร้างสถิติกันเถอะ!
+                </p>
+                <p class="text-[10px] text-amber-700 mt-0.5 font-bold">วิ่งให้เต็มที่เพื่อขึ้นแท่นทำลายสถิติบูธ! 🔥</p>
             </div>
 
             <!-- Shake Sensor Status & Real-time Test Meter -->
@@ -962,6 +1005,7 @@
                             <th class="py-3 px-3.5 font-black text-center">จำนวนคน (ไม่ซ้ำ)</th>
                             <th class="py-3 px-3.5 font-black text-center bg-amber-50">👑 รางวัลที่ 1<br><span class="text-[10px] text-amber-800 font-semibold">(สิทธิ์จับฉลาก)</span></th>
                             <th class="py-3 px-3.5 font-black text-center bg-teal-50/70">🍬 รางวัลอื่นๆ<br><span class="text-[10px] text-teal-800 font-semibold">(ขนมขบเคี้ยว / ของว่าง)</span></th>
+                            <th class="py-3 px-3.5 font-black text-center bg-yellow-50/80">🔥 แชมป์สถิติสูงสุดประจำวัน</th>
                             <th class="py-3 px-3.5 font-black text-right">เฉลี่ยรอบ/คน</th>
                         </tr>
                     </thead>
@@ -1546,12 +1590,12 @@ function doPost(e) {<br>
 
         // 1. INITIAL EMPLOYEE DATABASE
         let employeeDB = {
-            "1001": { id: "1001", name: "กิตติพงษ์ รักสุขภาพ", dept: "วิศวกรรม (Engineering)" },
-            "1002": { id: "1002", name: "ศิริพร ใจเบิกบาน", dept: "ทรัพยากรบุคคล (HR)" },
-            "1003": { id: "1003", name: "ธนวัฒน์ พลังล้น", dept: "ฝ่ายผลิต (Production)" },
-            "1004": { id: "1004", name: "ปวีณา สดใส", dept: "บัญชีและการเงิน (Finance)" },
-            "1005": { id: "1005", name: "ณัฐพล วิ่งสู้ฟัด", dept: "เทคโนโลยีสารสนเทศ (IT)" },
-            "1006": { id: "1006", name: "ชลธิชา สายฟิต", dept: "การตลาด (Marketing)" }
+            "1001": { id: "1001", name: "นักศึกษาฝึกงาน1", dept: "นักศึกษาฝึกงาน)" },
+            "1002": { id: "1002", name: "นักศึกษาฝึกงาน2", dept: "นักศึกษาฝึกงาน)" },
+            "1003": { id: "1003", name: "นักศึกษาฝึกงาน3", dept: "นักศึกษาฝึกงาน)" },
+            "1004": { id: "1004", name: "นักศึกษาฝึกงาน4", dept: "นักศึกษาฝึกงาน)" },
+            "1005": { id: "1005", name: "นักศึกษาฝึกงาน5", dept: "นักศึกษาฝึกงาน)" },
+            "1006": { id: "1006", name: "นักศึกษาฝึกงาน6", dept: "นักศึกษาฝึกงาน)" }
         };
 
         // 2. APPLICATION STATE
@@ -1681,6 +1725,26 @@ function doPost(e) {<br>
                 day.logs.push(log);
             });
 
+            // Calculate Champion & High Score for each individual day
+            Object.values(dailyMap).forEach(day => {
+                let maxScore = 0;
+                let champ = null;
+                day.logs.forEach(l => {
+                    const sc = Number(l.score || 0);
+                    if (sc > maxScore) {
+                        maxScore = sc;
+                        champ = {
+                            score: sc,
+                            empId: l.empId,
+                            name: l.name,
+                            dept: l.dept,
+                            roundId: l.roundId
+                        };
+                    }
+                });
+                day.highScore = champ;
+            });
+
             // Parse and sort dates descending
             const parseDateMs = (dStr) => {
                 const parts = dStr.split(/[\/\-]/);
@@ -1696,6 +1760,58 @@ function doPost(e) {<br>
 
             const sortedDays = Object.values(dailyMap).sort((a, b) => parseDateMs(b.date) - parseDateMs(a.date));
             return sortedDays;
+        }
+
+        // Helper: Get Daily High Score for a specific date (defaults to today)
+        function getDailyHighScore(targetDateStr) {
+            const targetDate = targetDateStr || new Date().toLocaleDateString('th-TH');
+            const dayLogs = playLogs.filter(l => extractDateFromLog(l) === targetDate);
+            if (!dayLogs || dayLogs.length === 0) return null;
+
+            let maxScore = 0;
+            let champ = null;
+            dayLogs.forEach(l => {
+                const sc = Number(l.score || 0);
+                if (sc > maxScore) {
+                    maxScore = sc;
+                    champ = {
+                        date: targetDate,
+                        score: sc,
+                        empId: l.empId,
+                        name: l.name,
+                        dept: l.dept,
+                        roundId: l.roundId
+                    };
+                }
+            });
+            return champ;
+        }
+
+        // Helper: Update All Live Daily High Score Banners across screens
+        function updateDailyHighScoreBanners() {
+            const todayStr = new Date().toLocaleDateString('th-TH');
+            const dailyChamp = getDailyHighScore(todayStr);
+
+            const stageDateLabel = document.getElementById('stage-daily-date-label');
+            const stageRecordText = document.getElementById('stage-daily-record-text');
+            const lobbyRecordText = document.getElementById('lobby-daily-record-text');
+            const waitingDateLabel = document.getElementById('waiting-daily-date-label');
+            const waitingRecordText = document.getElementById('waiting-daily-record-text');
+
+            if (stageDateLabel) stageDateLabel.textContent = todayStr;
+            if (waitingDateLabel) waitingDateLabel.textContent = todayStr;
+
+            if (dailyChamp) {
+                const champHtml = `คุณ <b class="text-amber-950 font-black">${dailyChamp.name}</b> (${dailyChamp.dept}) ทำไว้สูงสุด <span class="text-rose-600 font-mono text-base font-black px-1.5 py-0.5 bg-white/90 rounded-lg shadow-2xs">${dailyChamp.score} แต้ม</span>`;
+                if (stageRecordText) stageRecordText.innerHTML = champHtml;
+                if (lobbyRecordText) lobbyRecordText.innerHTML = `🏆 สถิติสูงสุดวันนี้: ${champHtml} — วิ่งแซงเพื่อชิงตำแหน่งแชมป์! 🔥`;
+                if (waitingRecordText) waitingRecordText.innerHTML = `👑 แชมป์วันนี้: ${champHtml}`;
+            } else {
+                const emptyMsg = `ยังไม่มีสถิติวันนี้ — มาร่วมเป็นคนแรกที่สร้างสถิติกันเถอะ! 🏃‍♂️💨`;
+                if (stageRecordText) stageRecordText.textContent = emptyMsg;
+                if (lobbyRecordText) lobbyRecordText.textContent = `⚡ ยังไม่มีสถิติวันนี้ — ใครจะเป็นคนแรกที่พิชิตสถิติก้าวสูงสุด!`;
+                if (waitingRecordText) waitingRecordText.textContent = emptyMsg;
+            }
         }
 
         // Rules Settings Modal Handlers
@@ -1795,6 +1911,26 @@ function doPost(e) {<br>
 
         function getActiveWheelPrizes() {
             return wheelPrizes.filter(p => p.active && (Number(p.stock) > 0 || Number(p.stock) === -1 || p.stock === undefined || p.stock === ''));
+        }
+
+        // Helper: Generate badges HTML for active wheel prizes
+        function getActivePrizesBadgesHtml(isStage = false) {
+            const active = getActiveWheelPrizes();
+            if (active.length === 0) return '<span class="text-xs text-slate-400">ยังไม่มีของรางวัลในวงล้อ</span>';
+            return active.map(p => {
+                const stockStr = (Number(p.stock) > 0) ? ` <span class="opacity-75">(${p.stock})</span>` : '';
+                if (isStage) {
+                    return `<span class="inline-flex items-center gap-1.5 bg-slate-900/80 border-2 border-amber-300 text-amber-200 text-xs sm:text-sm font-black px-3 py-1 rounded-2xl shadow-sm">
+                        <span class="text-base">${p.icon || '🎁'}</span>
+                        <span>${p.name}${stockStr}</span>
+                    </span>`;
+                } else {
+                    return `<span class="inline-flex items-center gap-1 bg-white/95 border border-amber-400 text-slate-800 text-[11px] font-black px-2.5 py-1 rounded-xl shadow-2xs">
+                        <span>${p.icon || '🎁'}</span>
+                        <span>${p.name}${stockStr}</span>
+                    </span>`;
+                }
+            }).join('');
         }
 
         function pickWinningWheelPrize(available) {
@@ -1968,14 +2104,24 @@ function doPost(e) {<br>
                     playWheelFlapperClick();
                 }
 
-                drawLuckyWheel('stage-wheel-canvas', currentWheelAngle);
+                if (document.getElementById('stage-wheel-canvas')) {
+                    drawLuckyWheel('stage-wheel-canvas', currentWheelAngle);
+                }
+                if (document.getElementById('mobile-wheel-canvas')) {
+                    drawLuckyWheel('mobile-wheel-canvas', currentWheelAngle);
+                }
 
                 if (progress < 1) {
                     wheelAnimationReqId = requestAnimationFrame(frame);
                 } else {
                     isWheelSpinning = false;
                     currentWheelAngle = targetAngle % 360;
-                    drawLuckyWheel('stage-wheel-canvas', currentWheelAngle);
+                    if (document.getElementById('stage-wheel-canvas')) {
+                        drawLuckyWheel('stage-wheel-canvas', currentWheelAngle);
+                    }
+                    if (document.getElementById('mobile-wheel-canvas')) {
+                        drawLuckyWheel('mobile-wheel-canvas', currentWheelAngle);
+                    }
                     if (typeof onComplete === 'function') onComplete();
                 }
             }
@@ -2028,13 +2174,14 @@ function doPost(e) {<br>
             }
             if (btnCenter) btnCenter.classList.add('hidden');
 
-            // Broadcast WHEEL_SPIN_START to all devices
+            // Broadcast WHEEL_SPIN_START to all devices with synced prizes
             broadcastSyncMessage({
                 type: 'WHEEL_SPIN_START',
                 targetAngle: targetAngle,
                 duration: 5500,
                 prizeName: wonPrize.name,
                 prizeId: wonPrize.id,
+                prizes: availablePrizes,
                 empId: winnerEmpId
             });
 
@@ -2106,6 +2253,16 @@ function doPost(e) {<br>
         };
 
         window.playerTriggerWheelSpin = function() {
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (!window._wheelAudioCtx && AudioCtx) {
+                    window._wheelAudioCtx = new AudioCtx();
+                }
+                if (window._wheelAudioCtx && window._wheelAudioCtx.state === 'suspended') {
+                    window._wheelAudioCtx.resume();
+                }
+            } catch(e) {}
+
             const btn = document.getElementById('btn-player-spin-wheel');
             const indicator = document.getElementById('mobile-wheel-spinning-indicator');
             if (btn) btn.classList.add('hidden');
@@ -2292,8 +2449,15 @@ function doPost(e) {<br>
 
         window.saveWheelSettings = function() {
             localStorage.setItem('health_sprint_wheel_prizes', JSON.stringify(wheelPrizes));
+            broadcastSyncMessage({
+                type: 'WHEEL_PRIZES_UPDATE',
+                prizes: wheelPrizes
+            });
             closeWheelSettingsModal();
             drawLuckyWheel('stage-wheel-canvas', currentWheelAngle);
+            if (document.getElementById('mobile-wheel-canvas')) {
+                drawLuckyWheel('mobile-wheel-canvas', currentWheelAngle);
+            }
             showToast("บันทึกการตั้งค่าของรางวัลวงล้อเรียบร้อยแล้วค่ะ! 🎡✨", "success");
         };
 
@@ -2605,7 +2769,20 @@ function doPost(e) {<br>
                     break;
                 }
 
+                case 'WHEEL_PRIZES_UPDATE': {
+                    if (Array.isArray(msg.prizes)) {
+                        wheelPrizes = msg.prizes;
+                        try { localStorage.setItem('health_sprint_wheel_prizes', JSON.stringify(wheelPrizes)); } catch(e) {}
+                        if (document.getElementById('stage-wheel-canvas')) drawLuckyWheel('stage-wheel-canvas', currentWheelAngle);
+                        if (document.getElementById('mobile-wheel-canvas')) drawLuckyWheel('mobile-wheel-canvas', currentWheelAngle);
+                    }
+                    break;
+                }
+
                 case 'WHEEL_SPIN_START': {
+                    if (Array.isArray(msg.prizes)) {
+                        wheelPrizes = msg.prizes;
+                    }
                     const btn = document.getElementById('btn-player-spin-wheel');
                     const indicator = document.getElementById('mobile-wheel-spinning-indicator');
                     if (btn) btn.classList.add('hidden');
@@ -4484,6 +4661,17 @@ function doPost(e) {<br>
                             </button>
                         </div>
 
+                        <!-- Active Wheel Prizes Showcase Badges Bar -->
+                        <div class="mt-2 mb-3 max-w-2xl mx-auto w-full">
+                            <p class="text-xs text-amber-200 font-extrabold uppercase tracking-wider mb-2 flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-gifts text-amber-400"></i>
+                                <span>ของรางวัลใหญ่ทั้งหมดในวงล้อรอบนี้ (ลุ้นได้ตามน้ำหนักความหายาก):</span>
+                            </p>
+                            <div class="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
+                                ${getActivePrizesBadgesHtml(true)}
+                            </div>
+                        </div>
+
                         <!-- Spin Status and Trigger Bar -->
                         <div id="stage-wheel-controls-area" class="mt-3 flex flex-col sm:flex-row items-center gap-3 ${wonInfo ? 'hidden' : ''}">
                             <button id="btn-spin-wheel-stage" onclick="adminTriggerWheelSpin()" 
@@ -4566,6 +4754,7 @@ function doPost(e) {<br>
         // =====================================================================
         function renderAllLiveViews() {
             updateWaitingRoomUI();
+            updateDailyHighScoreBanners();
             const racers = Object.values(activeRacers);
             // Sort by score descending to determine live rank (1st, 2nd, 3rd...)
             const sortedByScore = [...racers].sort((a, b) => b.score - a.score);
@@ -4741,35 +4930,61 @@ function doPost(e) {<br>
                     const eligibility = checkGrandPrizeEligibility(currentPlayer.id, todayStr);
                     if (eligibility.eligible) {
                         const wonInfo = activeHeatWonPrize && activeHeatWonPrize.empId === currentPlayer.id ? activeHeatWonPrize.prize : null;
-                        prizeBox.className = "bg-gradient-to-r from-amber-100 via-yellow-100 to-amber-200 border-2 border-amber-400 rounded-3xl p-4 my-3 text-center shadow-md animate-pulse";
+                        prizeBox.className = "bg-gradient-to-r from-amber-100 via-yellow-100 to-amber-200 border-2 border-amber-400 rounded-3xl p-4 sm:p-5 my-3 text-center shadow-lg";
                         prizeBox.innerHTML = `
-                            <div class="text-3xl mb-1">👑 🎡</div>
+                            <div class="text-3xl mb-1 animate-bounce">👑 🎡</div>
                             <p class="text-xs font-black text-amber-900 uppercase tracking-wider">🎉 ยินดีด้วยค่ะ! คุณชนะเลิศอันดับ 1 ของรอบนี้</p>
-                            <p class="text-base sm:text-lg font-black text-amber-950 mt-1">ได้รับสิทธิ์หมุนวงล้อลุ้นรางวัลใหญ่! 🎡</p>
+                            <p class="text-base sm:text-xl font-black text-amber-950 mt-1">ได้รับสิทธิ์หมุนวงล้อลุ้นรางวัลใหญ่! 🎡</p>
                             
-                            <div id="mobile-wheel-action-area" class="${wonInfo ? 'hidden' : ''} mt-3">
-                                <button id="btn-player-spin-wheel" onclick="playerTriggerWheelSpin()" 
-                                    class="btn-clay-yellow w-full py-3.5 px-4 font-black text-base shadow-xl flex items-center justify-center gap-2 cursor-pointer animate-bounce">
-                                    <i class="fa-solid fa-arrows-spin text-xl"></i>
-                                    <span>🎡 แตะเพื่อหมุนวงล้อสดบนจอใหญ่!</span>
-                                </button>
-                                <p class="text-[11px] text-amber-800 mt-2 font-bold">แตะปุ่มนี้เพื่อสั่งให้วงล้อบนจอใหญ่ของบูธเริ่มหมุนสดๆ ได้เลยค่ะ!</p>
+                            <!-- Mobile Lucky Wheel Canvas Display -->
+                            <div class="relative flex items-center justify-center my-3">
+                                <!-- Top Needle Pointer -->
+                                <div class="absolute -top-3 z-20 flex flex-col items-center pointer-events-none drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)]">
+                                    <div class="w-7 h-9 bg-gradient-to-b from-rose-500 to-red-600 rounded-t-md border-2 border-white shadow-lg flex items-center justify-center" style="clip-path: polygon(50% 100%, 0 0, 100% 0);">
+                                        <div class="w-2 h-2 bg-amber-300 rounded-full mb-2.5"></div>
+                                    </div>
+                                </div>
+                                <!-- Canvas Wheel -->
+                                <div class="p-2 rounded-full bg-gradient-to-tr from-amber-500 via-yellow-300 to-amber-600 shadow-[0_8px_25px_rgba(245,158,11,0.5)] border-3 border-amber-200">
+                                    <canvas id="mobile-wheel-canvas" width="280" height="280" class="rounded-full bg-slate-900 w-[240px] h-[240px] sm:w-[280px] sm:h-[280px]"></canvas>
+                                </div>
                             </div>
 
-                            <div id="mobile-wheel-spinning-indicator" class="hidden mt-3 py-3 px-4 bg-amber-200/80 rounded-2xl border border-amber-400 text-amber-950 font-black text-sm flex items-center justify-center gap-2">
+                            <!-- Available Prizes Showcase Badges -->
+                            <div class="my-2.5">
+                                <p class="text-[11px] text-amber-900 font-extrabold mb-1">🎁 ของรางวัลใหญ่ทั้งหมดในวงล้อ:</p>
+                                <div class="flex flex-wrap items-center justify-center gap-1.5 max-w-sm mx-auto">
+                                    ${getActivePrizesBadgesHtml(false)}
+                                </div>
+                            </div>
+
+                            <div id="mobile-wheel-action-area" class="${wonInfo ? 'hidden' : ''} mt-3">
+                                <button id="btn-player-spin-wheel" onclick="playerTriggerWheelSpin()" 
+                                    class="btn-clay-yellow w-full py-3.5 px-4 font-black text-base sm:text-lg shadow-xl flex items-center justify-center gap-2 cursor-pointer animate-bounce">
+                                    <i class="fa-solid fa-arrows-spin text-xl"></i>
+                                    <span>🎡 แตะเพื่อหมุนวงล้อสด!</span>
+                                </button>
+                                <p class="text-[11px] text-amber-800 mt-2 font-bold">แตะปุ่มนี้เพื่อหมุนวงล้อสดบนจอใหญ่และบนมือถือของคุณพร้อมกันค่ะ!</p>
+                            </div>
+
+                            <div id="mobile-wheel-spinning-indicator" class="hidden mt-3 py-3 px-4 bg-amber-200/90 rounded-2xl border border-amber-400 text-amber-950 font-black text-sm flex items-center justify-center gap-2 animate-pulse">
                                 <i class="fa-solid fa-spinner fa-spin text-lg text-amber-700"></i>
-                                <span>วงล้อกำลังหมุนบนจอใหญ่... ร่วมลุ้นกันค่ะ!</span>
+                                <span>วงล้อกำลังหมุน... ร่วมลุ้นรางวัลกันค่ะ! 🎡✨</span>
                             </div>
 
                             <div id="mobile-wheel-won-box" class="${wonInfo ? '' : 'hidden'} mt-3 bg-white p-4 rounded-2xl border-2 border-amber-400 text-slate-800 shadow-md">
-                                <span class="text-2xl">🎉👑✨</span>
+                                <span class="text-2xl animate-bounce">🎉👑✨</span>
                                 <p class="text-xs font-bold text-amber-800 uppercase tracking-wider mt-1">รางวัลใหญ่ที่คุณได้รับคือ:</p>
-                                <h4 id="mobile-won-prize-name" class="text-xl font-black text-teal-700 mt-1">
+                                <h4 id="mobile-won-prize-name" class="text-xl sm:text-2xl font-black text-teal-700 mt-1">
                                     ${wonInfo ? (wonInfo.icon || '🎁') + ' ' + wonInfo.name : ''}
                                 </h4>
-                                <p class="text-xs text-slate-500 mt-1">ติดต่อรับของรางวัลกับเจ้าหน้าที่แอดมินประจำบูธได้เลยค่ะ!</p>
+                                <p class="text-xs text-slate-500 mt-1 font-bold">ติดต่อรับของรางวัลกับเจ้าหน้าที่แอดมินประจำบูธได้เลยค่ะ!</p>
                             </div>
                         `;
+                        // Initial draw of the mobile canvas
+                        setTimeout(() => {
+                            drawLuckyWheel('mobile-wheel-canvas', currentWheelAngle);
+                        }, 80);
                     } else {
                         prizeBox.className = "bg-gradient-to-r from-amber-50 via-teal-50 to-emerald-50 border-2 border-teal-300 rounded-3xl p-4 my-3 text-center shadow-md";
                         prizeBox.innerHTML = `
@@ -4912,6 +5127,10 @@ function doPost(e) {<br>
                                         <span class="text-amber-800 font-black">👑 รางวัลที่ 1: <b>${day.rank1Count}</b> สิทธิ์</span>
                                         <span class="text-teal-800 font-black">🍬 ขนม: <b>${day.consolationCount}</b> ชิ้น</span>
                                     </div>
+                                    <div class="pt-1.5 flex items-center justify-between text-[11px] bg-amber-50/80 px-2.5 py-1 rounded-xl mt-1 border border-amber-200">
+                                        <span class="text-amber-900 font-black flex items-center gap-1"><span>🔥</span> แชมป์ประจำวัน:</span>
+                                        <span class="font-extrabold text-slate-800 truncate">${day.highScore ? `${day.highScore.name} <b class="text-rose-600 font-mono">(${day.highScore.score} ก้าว)</b>` : '<span class="text-slate-400">ยังไม่มี</span>'}</span>
+                                    </div>
                                 </div>
                             </div>
                         `;
@@ -4923,13 +5142,24 @@ function doPost(e) {<br>
             const dailyTableBody = document.getElementById('admin-daily-table-body');
             if (dailyTableBody) {
                 if (dailyStats.length === 0) {
-                    dailyTableBody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-slate-400 text-xs">ยังไม่มีข้อมูลสถิติรายวัน</td></tr>`;
+                    dailyTableBody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-slate-400 text-xs">ยังไม่มีข้อมูลสถิติรายวัน</td></tr>`;
                 } else {
                     let rowsHtml = '';
                     let grandPlays = 0;
                     let grandRank1 = 0;
                     let grandConso = 0;
                     const allUniqueSet = new Set();
+
+                    // Overall champion across entire event
+                    let grandMax = 0;
+                    let grandChamp = null;
+                    playLogs.forEach(l => {
+                        const sc = Number(l.score || 0);
+                        if (sc > grandMax) {
+                            grandMax = sc;
+                            grandChamp = l;
+                        }
+                    });
 
                     dailyStats.forEach((day, idx) => {
                         grandPlays += day.totalPlays;
@@ -4948,6 +5178,9 @@ function doPost(e) {<br>
                                 <td class="py-2.5 px-3.5 text-center font-bold text-slate-700">${day.uniqueRacers.size} คน</td>
                                 <td class="py-2.5 px-3.5 text-center font-black text-amber-700 bg-amber-50/70 font-mono">${day.rank1Count} สิทธิ์</td>
                                 <td class="py-2.5 px-3.5 text-center font-black text-teal-700 bg-teal-50/50 font-mono">${day.consolationCount} ชิ้น</td>
+                                <td class="py-2.5 px-3.5 text-center font-bold text-slate-800 bg-yellow-50/50">
+                                    ${day.highScore ? `<span class="font-black text-amber-950">${day.highScore.name}</span> <span class="text-rose-600 font-mono font-black">(${day.highScore.score} ก้าว)</span>` : '<span class="text-slate-400">-</span>'}
+                                </td>
                                 <td class="py-2.5 px-3.5 text-right font-bold text-slate-500">${avgPerPerson} รอบ</td>
                             </tr>
                         `;
@@ -4962,6 +5195,9 @@ function doPost(e) {<br>
                             <td class="py-3 px-3.5 text-center text-slate-800">${allUniqueSet.size} คน</td>
                             <td class="py-3 px-3.5 text-center text-amber-900 bg-amber-100/80 text-base font-mono">${grandRank1} สิทธิ์</td>
                             <td class="py-3 px-3.5 text-center text-teal-900 bg-teal-100/50 text-base font-mono">${grandConso} ชิ้น</td>
+                            <td class="py-3 px-3.5 text-center text-amber-950 bg-yellow-100/70 font-mono">
+                                ${grandChamp ? `${grandChamp.name} (${grandChamp.score} ก้าว)` : '-'}
+                            </td>
                             <td class="py-3 px-3.5 text-right text-slate-700">${grandAvg} รอบ</td>
                         </tr>
                     `;
