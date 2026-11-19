@@ -817,6 +817,9 @@
                 <button onclick="openRulesSettingsModal()" class="btn-clay-white px-3.5 py-2.5 font-extrabold text-xs flex items-center gap-1.5 cursor-pointer text-amber-800" title="ตั้งค่ากติการับรางวัลใหญ่รายวัน และเปลี่ยนชื่อรางวัล">
                     <i class="fa-solid fa-sliders text-amber-600"></i> ตั้งค่ากติกา & รางวัล
                 </button>
+                <button onclick="openWheelSettingsModal()" class="btn-clay-yellow px-3.5 py-2.5 font-black text-xs flex items-center gap-1.5 cursor-pointer shadow-sm text-slate-900" title="พิมพ์รายการของรางวัลใหญ่ ตั้งค่าสต็อก และกำหนดโอกาสออก (ออกยาก/ออกง่าย)">
+                    <i class="fa-solid fa-dharmachakra text-amber-800 text-sm"></i> 🎡 ตั้งค่าวงล้อรางวัลใหญ่
+                </button>
                 <button onclick="openEmployeeModal()" class="btn-clay-white px-3.5 py-2.5 font-extrabold text-xs flex items-center gap-1.5 cursor-pointer">
                     <i class="fa-solid fa-users-gear text-teal-600"></i> ฐานข้อมูลพนักงาน (<span id="db-count">0</span>)
                 </button>
@@ -1156,6 +1159,82 @@
     </div>
 
     <!-- ===================================================================== -->
+    <!-- MODAL: LUCKY WHEEL GRAND PRIZES & PROBABILITY SETTINGS               -->
+    <!-- ===================================================================== -->
+    <div id="wheel-settings-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 sm:p-4">
+        <div class="clay-card max-w-4xl w-full p-5 sm:p-7 border-4 border-white shadow-2xl max-h-[92vh] flex flex-col">
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="font-black text-xl text-slate-800 flex items-center gap-2">
+                    <span class="text-2xl animate-spin-slow">🎡</span> ตั้งค่าของรางวัลวงล้อ & โอกาสออก (Grand Prizes)
+                </h3>
+                <button onclick="closeWheelSettingsModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition cursor-pointer">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <p class="text-xs text-slate-600 mb-3">
+                พิมพ์แก้ไขชื่อรางวัล ตั้งค่าสต็อกคงเหลือ และกำหนด <b>น้ำหนักโอกาสออก (Weight)</b> เพื่อให้รางวัลใหญ่บางชิ้นออกยากเป็นพิเศษ ระบบจะคำนวณเปอร์เซ็นต์โอกาสออกจริงให้อัตโนมัติค่ะ
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1 overflow-hidden min-h-0">
+                <!-- Left 2 Cols: Prize Table -->
+                <div class="md:col-span-2 flex flex-col overflow-hidden">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-black text-slate-700">รายการของรางวัลในวงล้อ (<span id="wheel-prize-count">0</span> รายการ)</span>
+                        <button onclick="addWheelPrizeRow()" class="btn-clay-teal px-3 py-1.5 text-xs font-black flex items-center gap-1 cursor-pointer">
+                            <i class="fa-solid fa-plus"></i> เพิ่มรางวัลใหม่
+                        </button>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto border-2 border-slate-200 rounded-2xl p-2 bg-slate-50/60 space-y-2 max-h-[48vh]" id="wheel-prizes-list-container">
+                        <!-- Populated dynamically via JS -->
+                    </div>
+                </div>
+
+                <!-- Right Col: Live Preview Wheel & Summary -->
+                <div class="bg-amber-50/80 p-4 rounded-2xl border-2 border-amber-200 flex flex-col items-center justify-between text-center">
+                    <div>
+                        <h4 class="text-xs font-black text-amber-950 uppercase tracking-wider mb-1 flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-eye text-amber-600"></i> ตัวอย่างหน้าตาวงล้อสด
+                        </h4>
+                        <p class="text-[11px] text-amber-800 mb-2">เฉพาะรายการที่เปิดใช้งานและยังมีสต็อก</p>
+                    </div>
+
+                    <div class="relative my-2 flex items-center justify-center">
+                        <canvas id="preview-wheel-canvas" width="220" height="220" class="rounded-full shadow-md bg-slate-900 border-2 border-amber-300"></canvas>
+                        <!-- Pointer -->
+                        <div class="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-6 bg-rose-500 rounded-t border border-white shadow pointer-events-none" style="clip-path: polygon(50% 100%, 0 0, 100% 0);"></div>
+                    </div>
+
+                    <div class="w-full bg-white/95 p-2.5 rounded-xl border border-amber-300 text-[11px] text-left text-slate-700 space-y-1">
+                        <div class="flex justify-between font-bold">
+                            <span>ผลรวมน้ำหนัก:</span>
+                            <span id="wheel-total-weight-display" class="font-black text-teal-700">100</span>
+                        </div>
+                        <div class="flex justify-between font-bold">
+                            <span>รางวัลที่ออกยากสุด:</span>
+                            <span id="wheel-rarest-prize-display" class="font-black text-amber-700">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Buttons -->
+            <div class="grid grid-cols-3 gap-3 mt-4 pt-3 border-t border-slate-200">
+                <button onclick="resetDefaultWheelPrizes()" class="btn-clay-white py-2.5 text-xs font-bold text-slate-600 cursor-pointer flex items-center justify-center gap-1.5" title="คืนค่าของรางวัลเริ่มต้นของระบบ">
+                    <i class="fa-solid fa-rotate-left"></i> คืนค่าเริ่มต้น
+                </button>
+                <button onclick="closeWheelSettingsModal()" class="btn-clay-white py-2.5 text-xs font-bold cursor-pointer">
+                    ยกเลิก
+                </button>
+                <button onclick="saveWheelSettings()" class="btn-clay-teal py-2.5 text-xs font-black cursor-pointer shadow-md flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-check"></i> บันทึกการตั้งค่า
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
     <!-- MODAL: MANAGE / IMPORT EMPLOYEE DATABASE                              -->
     <!-- ===================================================================== -->
     <div id="employee-db-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
@@ -1217,13 +1296,22 @@ function doGet(e) {<br>
 &nbsp;&nbsp;return ContentService.createTextOutput(JSON.stringify({ status: "success", count: Object.keys(employees).length, employees: employees, logs: logs })).setMimeType(ContentService.MimeType.JSON);<br>
 }<br>
 <br>
-// 2. รับผลการแข่งจากมือถือผู้เล่น บันทึกลงชีต GameLogs (ล็อกเลข 0 นำหน้า)<br>
+// 2. รับผลการแข่งจากจอหลัก บันทึกลงชีต GameLogs (ล็อกเลข 0 นำหน้า พร้อมป้องกันบันทึกซ้ำ)<br>
 function doPost(e) {<br>
 &nbsp;&nbsp;try {<br>
 &nbsp;&nbsp;&nbsp;&nbsp;var d = JSON.parse(e.postData.contents);<br>
 &nbsp;&nbsp;&nbsp;&nbsp;var ss = SpreadsheetApp.getActiveSpreadsheet();<br>
 &nbsp;&nbsp;&nbsp;&nbsp;var s = ss.getSheetByName("GameLogs") || ss.getActiveSheet();<br>
 &nbsp;&nbsp;&nbsp;&nbsp;var empId = "'" + String(d.empIdRaw || d.empId || '').replace(/^'/, '');<br>
+&nbsp;&nbsp;&nbsp;&nbsp;var lastRow = s.getLastRow();<br>
+&nbsp;&nbsp;&nbsp;&nbsp;if (lastRow > 1) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;var lastEmpId = String(s.getRange(lastRow, 2).getValue()).replace(/^'/, '');<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;var lastDate = new Date(s.getRange(lastRow, 1).getValue());<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;var now = new Date();<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if (lastEmpId === String(d.empIdRaw || d.empId || '').replace(/^'/, '') && ((now.getTime() - lastDate.getTime()) / 1000) < 3) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return ContentService.createTextOutput(JSON.stringify({status:'ignored_duplicate'})).setMimeType(ContentService.MimeType.JSON);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br>
 &nbsp;&nbsp;&nbsp;&nbsp;s.appendRow([new Date(), empId, d.name, d.dept, d.score]);<br>
 &nbsp;&nbsp;&nbsp;&nbsp;return ContentService.createTextOutput(JSON.stringify({status:'success'})).setMimeType(ContentService.MimeType.JSON);<br>
 &nbsp;&nbsp;} catch (err) {<br>
@@ -1674,6 +1762,541 @@ function doPost(e) {<br>
             showToast("ล้างประวัติในระบบเป็น 0 รอบ เรียบร้อยแล้วค่ะ", "info");
         };
 
+        // =====================================================================
+        // LUCKY WHEEL SYSTEM (GRAND PRIZES & WEIGHTED PROBABILITY)
+        // =====================================================================
+        const DEFAULT_WHEEL_PRIZES = [
+            { id: 'p1', name: 'สร้อยคอทองคำ 1 สลึง', icon: '👑', weight: 3, stock: 1, active: true, color: '#f59e0b' },
+            { id: 'p2', name: 'Smart Watch สุขภาพ', icon: '⌚', weight: 8, stock: 3, active: true, color: '#0ea5e9' },
+            { id: 'p3', name: 'คูปองโลตัส 500 บาท', icon: '💵', weight: 15, stock: 5, active: true, color: '#10b981' },
+            { id: 'p4', name: 'กระเป๋าเป้ Limited', icon: '🎒', weight: 20, stock: 10, active: true, color: '#8b5cf6' },
+            { id: 'p5', name: 'แก้วเก็บความเย็นพรีเมียม', icon: '🥤', weight: 25, stock: 20, active: true, color: '#f43f5e' },
+            { id: 'p6', name: 'หมวกวิ่ง Safety Sprint', icon: '🧢', weight: 30, stock: 30, active: true, color: '#ec4899' }
+        ];
+
+        const WHEEL_SLICE_PALETTE = [
+            '#f59e0b', '#0ea5e9', '#10b981', '#8b5cf6', '#f43f5e', 
+            '#ec4899', '#f97316', '#14b8a6', '#6366f1', '#eab308'
+        ];
+
+        let wheelPrizes = [];
+        try {
+            const savedWP = localStorage.getItem('health_sprint_wheel_prizes');
+            if (savedWP) wheelPrizes = JSON.parse(savedWP);
+            else wheelPrizes = JSON.parse(JSON.stringify(DEFAULT_WHEEL_PRIZES));
+        } catch (e) {
+            wheelPrizes = JSON.parse(JSON.stringify(DEFAULT_WHEEL_PRIZES));
+        }
+
+        let isWheelSpinning = false;
+        let currentWheelAngle = 0;
+        let activeHeatWonPrize = null;
+        let wheelAnimationReqId = null;
+
+        function getActiveWheelPrizes() {
+            return wheelPrizes.filter(p => p.active && (Number(p.stock) > 0 || Number(p.stock) === -1 || p.stock === undefined || p.stock === ''));
+        }
+
+        function pickWinningWheelPrize(available) {
+            if (!available || available.length === 0) {
+                return { id: 'fallback', name: 'ของรางวัลพิเศษจากบูธสุขภาพ', icon: '🎁', weight: 1, stock: -1, color: '#f59e0b' };
+            }
+            const totalWeight = available.reduce((acc, p) => acc + Math.max(1, Number(p.weight || 1)), 0);
+            let rand = Math.random() * totalWeight;
+            for (const p of available) {
+                const w = Math.max(1, Number(p.weight || 1));
+                if (rand < w) return p;
+                rand -= w;
+            }
+            return available[0];
+        }
+
+        // Crisp flapper ticking sound via Web Audio API
+        function playWheelFlapperClick() {
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (!window._wheelAudioCtx && AudioCtx) {
+                    window._wheelAudioCtx = new AudioCtx();
+                }
+                const ctx = window._wheelAudioCtx;
+                if (ctx && ctx.state === 'suspended') ctx.resume();
+                if (ctx) {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(950, ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(160, ctx.currentTime + 0.035);
+                    gain.gain.setValueAtTime(0.22, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.035);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.035);
+                }
+            } catch (e) {}
+        }
+
+        // Draw Lucky Wheel Canvas
+        window.drawLuckyWheel = function(canvasId, rotationDeg = 0, customPrizes = null) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+            const cx = width / 2;
+            const cy = height / 2;
+            const radius = Math.min(cx, cy) - 16;
+
+            ctx.clearRect(0, 0, width, height);
+
+            const prizes = customPrizes || getActiveWheelPrizes();
+            const numSlices = prizes.length;
+            if (numSlices === 0) {
+                ctx.fillStyle = '#64748b';
+                ctx.font = 'bold 14px Sarabun, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('ไม่มีรางวัลที่เปิดใช้งาน', cx, cy);
+                return;
+            }
+
+            const sliceAngle = (2 * Math.PI) / numSlices;
+
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate((rotationDeg * Math.PI) / 180);
+
+            // Draw Wheel Slices
+            for (let i = 0; i < numSlices; i++) {
+                const p = prizes[i];
+                const startAngle = i * sliceAngle;
+                const endAngle = startAngle + sliceAngle;
+
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.arc(0, 0, radius, startAngle, endAngle);
+                ctx.closePath();
+                ctx.fillStyle = p.color || WHEEL_SLICE_PALETTE[i % WHEEL_SLICE_PALETTE.length];
+                ctx.fill();
+
+                // Slice Divider Lines
+                ctx.lineWidth = 2.5;
+                ctx.strokeStyle = '#ffffff';
+                ctx.stroke();
+
+                // Slice Text and Icon
+                ctx.save();
+                ctx.rotate(startAngle + sliceAngle / 2);
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#ffffff';
+                ctx.shadowColor = 'rgba(0,0,0,0.45)';
+                ctx.shadowBlur = 4;
+                ctx.shadowOffsetX = 1;
+                ctx.shadowOffsetY = 1;
+
+                const isSmall = radius < 140;
+                ctx.font = isSmall ? 'bold 10px Sarabun, sans-serif' : 'bold 13px Sarabun, sans-serif';
+                const maxLen = isSmall ? 10 : 16;
+                const displayName = p.name.length > maxLen ? p.name.substring(0, maxLen - 1) + '…' : p.name;
+                ctx.fillText(displayName, radius - (isSmall ? 18 : 26), 0);
+
+                ctx.font = isSmall ? '13px sans-serif' : '17px sans-serif';
+                ctx.fillText(p.icon || '🎁', radius - (isSmall ? 4 : 8), 0);
+                ctx.restore();
+            }
+
+            ctx.restore();
+
+            // Outer Golden Border with Bulbs
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.beginPath();
+            ctx.arc(0, 0, radius, 0, 2 * Math.PI);
+            ctx.lineWidth = radius < 140 ? 8 : 12;
+            ctx.strokeStyle = '#f59e0b';
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(0, 0, radius + (radius < 140 ? 4 : 6), 0, 2 * Math.PI);
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#fde68a';
+            ctx.stroke();
+
+            // Decorative Glowing Bulbs around rim
+            const numBulbs = 16;
+            for (let b = 0; b < numBulbs; b++) {
+                const bulbAngle = (b * 2 * Math.PI) / numBulbs;
+                const bx = (radius) * Math.cos(bulbAngle);
+                const by = (radius) * Math.sin(bulbAngle);
+                ctx.beginPath();
+                ctx.arc(bx, by, radius < 140 ? 2.5 : 4, 0, 2 * Math.PI);
+                ctx.fillStyle = (b % 2 === 0) ? '#fef08a' : '#ffffff';
+                ctx.shadowColor = '#fef08a';
+                ctx.shadowBlur = 6;
+                ctx.fill();
+            }
+            ctx.restore();
+        };
+
+        // Smooth Animation Engine
+        function animateWheelSpin(targetAngle, durationMs = 5500, onComplete) {
+            if (isWheelSpinning) return;
+            isWheelSpinning = true;
+            const startAngle = currentWheelAngle % 360;
+            const startTime = performance.now();
+            let lastSliceIdx = -1;
+
+            const activePrizes = getActiveWheelPrizes();
+            const numSlices = Math.max(1, activePrizes.length);
+            const sliceAngle = 360 / numSlices;
+
+            function frame(now) {
+                const elapsed = now - startTime;
+                const progress = Math.min(1, elapsed / durationMs);
+
+                // Quintic ease out for dramatic slow down
+                const ease = 1 - Math.pow(1 - progress, 5);
+                currentWheelAngle = startAngle + (targetAngle - startAngle) * ease;
+
+                // Check slice crossings for ticking
+                const pointerRelAngle = ((270 - currentWheelAngle) % 360 + 360) % 360;
+                const currentSliceIdx = Math.floor(pointerRelAngle / sliceAngle);
+
+                if (currentSliceIdx !== lastSliceIdx) {
+                    lastSliceIdx = currentSliceIdx;
+                    playWheelFlapperClick();
+                }
+
+                drawLuckyWheel('stage-wheel-canvas', currentWheelAngle);
+
+                if (progress < 1) {
+                    wheelAnimationReqId = requestAnimationFrame(frame);
+                } else {
+                    isWheelSpinning = false;
+                    currentWheelAngle = targetAngle % 360;
+                    drawLuckyWheel('stage-wheel-canvas', currentWheelAngle);
+                    if (typeof onComplete === 'function') onComplete();
+                }
+            }
+
+            wheelAnimationReqId = requestAnimationFrame(frame);
+        }
+
+        // Trigger Spin Execution (Authoritative Host Logic)
+        window.executeLuckyWheelSpin = async function(triggerEmpId) {
+            if (isWheelSpinning) return;
+            if (activeHeatWonPrize) {
+                showToast("วงล้อสำหรับรอบนี้ได้ถูกหมุนไปแล้วค่ะ", "info");
+                return;
+            }
+
+            const racers = Object.values(activeRacers).sort((a, b) => b.score - a.score);
+            if (racers.length === 0) {
+                showToast("ไม่พบผู้เข้าแข่งขันในรอบนี้", "warning");
+                return;
+            }
+            const winner1 = racers[0];
+            const winnerEmpId = winner1.empId;
+
+            const availablePrizes = getActiveWheelPrizes();
+            if (availablePrizes.length === 0) {
+                showToast("ยังไม่มีของรางวัลที่เปิดใช้งานในวงล้อ กรุณาตั้งค่ารางวัลก่อนค่ะ", "warning");
+                return;
+            }
+
+            const wonPrize = pickWinningWheelPrize(availablePrizes);
+            const wonIndex = availablePrizes.findIndex(p => p.id === wonPrize.id);
+            const numSlices = availablePrizes.length;
+            const sliceAngle = 360 / numSlices;
+
+            // Target pointer needle at 270 deg (top center)
+            const sliceCenterAngle = (wonIndex + 0.5) * sliceAngle;
+            const jitter = (Math.random() - 0.5) * (sliceAngle * 0.6);
+            const normalizedTarget = ((270 - sliceCenterAngle + jitter) % 360 + 360) % 360;
+
+            const fullSpins = (5 + Math.floor(Math.random() * 2)) * 360;
+            const currentNorm = currentWheelAngle % 360;
+            const targetAngle = currentWheelAngle + (360 - currentNorm) + fullSpins + normalizedTarget;
+
+            // Update UI buttons
+            const btnStage = document.getElementById('btn-spin-wheel-stage');
+            const btnCenter = document.getElementById('btn-stage-wheel-center');
+            if (btnStage) {
+                btnStage.disabled = true;
+                btnStage.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-xl"></i> <span>กำลังหมุนวงล้อ...</span>`;
+            }
+            if (btnCenter) btnCenter.classList.add('hidden');
+
+            // Broadcast WHEEL_SPIN_START to all devices
+            broadcastSyncMessage({
+                type: 'WHEEL_SPIN_START',
+                targetAngle: targetAngle,
+                duration: 5500,
+                prizeName: wonPrize.name,
+                prizeId: wonPrize.id,
+                empId: winnerEmpId
+            });
+
+            // Start animation
+            animateWheelSpin(targetAngle, 5500, () => {
+                activeHeatWonPrize = {
+                    empId: winnerEmpId,
+                    prize: wonPrize
+                };
+
+                // Deduct stock if limited
+                if (Number(wonPrize.stock) > 0) {
+                    wonPrize.stock = Number(wonPrize.stock) - 1;
+                    const inList = wheelPrizes.find(p => p.id === wonPrize.id);
+                    if (inList && Number(inList.stock) > 0) inList.stock = Number(inList.stock) - 1;
+                    localStorage.setItem('health_sprint_wheel_prizes', JSON.stringify(wheelPrizes));
+                }
+
+                // Fanfare & Confetti
+                playBeep("C5", "8n");
+                setTimeout(() => playBeep("E5", "8n"), 120);
+                setTimeout(() => playBeep("G5", "8n"), 240);
+                setTimeout(() => playBeep("C6", "2n"), 360);
+                if (typeof confetti === 'function') {
+                    confetti({ particleCount: 140, spread: 100, origin: { y: 0.5 } });
+                }
+
+                // Show won card on stage
+                const wonCard = document.getElementById('stage-wheel-won-card');
+                const wonText = document.getElementById('stage-wheel-won-prize-text');
+                if (wonText) wonText.innerHTML = `${wonPrize.icon || '🎁'} ${wonPrize.name}`;
+                if (wonCard) wonCard.classList.remove('hidden');
+
+                const controls = document.getElementById('stage-wheel-controls-area');
+                if (controls) controls.classList.add('hidden');
+
+                // Update prizesAwarded & playLogs
+                const timeStr = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                const todayDateStr = new Date().toLocaleDateString('th-TH');
+                prizesAwarded[winnerEmpId] = {
+                    rank: 1,
+                    prizeName: wonPrize.name,
+                    awardedAt: timeStr,
+                    wonDate: todayDateStr
+                };
+                localStorage.setItem('health_sprint_prizes', JSON.stringify(prizesAwarded));
+
+                const lastWinnerLog = playLogs.slice().reverse().find(l => l.empId === winnerEmpId);
+                if (lastWinnerLog) {
+                    lastWinnerLog.prize = wonPrize.name;
+                    localStorage.setItem('health_sprint_play_logs', JSON.stringify(playLogs));
+                }
+
+                // Broadcast result to room so mobile screen displays won prize!
+                broadcastSyncMessage({
+                    type: 'WHEEL_SPIN_RESULT',
+                    empId: winnerEmpId,
+                    prizeName: wonPrize.name,
+                    prizeIcon: wonPrize.icon || '🎁'
+                });
+
+                renderAdminDashboard();
+                showToast(`🎉 คุณ ${winner1.name} ได้รับ "${wonPrize.name}" เรียบร้อยแล้วค่ะ!`, "success");
+            });
+        };
+
+        window.adminTriggerWheelSpin = function() {
+            executeLuckyWheelSpin();
+        };
+
+        window.playerTriggerWheelSpin = function() {
+            const btn = document.getElementById('btn-player-spin-wheel');
+            const indicator = document.getElementById('mobile-wheel-spinning-indicator');
+            if (btn) btn.classList.add('hidden');
+            if (indicator) indicator.classList.remove('hidden');
+
+            broadcastSyncMessage({
+                type: 'WHEEL_SPIN_TRIGGER',
+                empId: currentPlayer ? currentPlayer.id : ''
+            });
+            showToast("ส่งคำสั่งหมุนวงล้อขึ้นจอใหญ่แล้วค่ะ! ร่วมลุ้นกันนะคะ 🎡", "success");
+        };
+
+        // Wheel Settings Modal Handlers
+        window.openWheelSettingsModal = function() {
+            renderWheelPrizesTable();
+            drawPreviewWheel();
+            document.getElementById('wheel-settings-modal')?.classList.remove('hidden');
+        };
+
+        window.closeWheelSettingsModal = function() {
+            document.getElementById('wheel-settings-modal')?.classList.add('hidden');
+        };
+
+        function drawPreviewWheel() {
+            drawLuckyWheel('preview-wheel-canvas', 0);
+        }
+
+        function calculatePrizeProbabilities() {
+            const active = getActiveWheelPrizes();
+            const totalWeight = active.reduce((acc, p) => acc + Math.max(1, Number(p.weight || 1)), 0);
+            return { totalWeight, activeCount: active.length };
+        }
+
+        window.renderWheelPrizesTable = function() {
+            const container = document.getElementById('wheel-prizes-list-container');
+            const countEl = document.getElementById('wheel-prize-count');
+            const totalWeightEl = document.getElementById('wheel-total-weight-display');
+            const rarestEl = document.getElementById('wheel-rarest-prize-display');
+            if (!container) return;
+
+            const { totalWeight, activeCount } = calculatePrizeProbabilities();
+            if (countEl) countEl.textContent = wheelPrizes.length;
+            if (totalWeightEl) totalWeightEl.textContent = totalWeight;
+
+            // Find rarest active prize
+            const active = getActiveWheelPrizes();
+            let minWeight = Infinity;
+            let rarest = null;
+            active.forEach(p => {
+                const w = Math.max(1, Number(p.weight || 1));
+                if (w < minWeight) {
+                    minWeight = w;
+                    rarest = p;
+                }
+            });
+            if (rarestEl) {
+                if (rarest && totalWeight > 0) {
+                    const pct = ((minWeight / totalWeight) * 100).toFixed(1);
+                    rarestEl.textContent = `${rarest.name} (${pct}%)`;
+                } else {
+                    rarestEl.textContent = '-';
+                }
+            }
+
+            container.innerHTML = '';
+            wheelPrizes.forEach((p, idx) => {
+                const weightNum = Math.max(1, Number(p.weight || 1));
+                const pct = totalWeight > 0 && p.active && (Number(p.stock) > 0 || Number(p.stock) === -1)
+                    ? ((weightNum / totalWeight) * 100).toFixed(1)
+                    : 0;
+
+                let rarityBadge = '';
+                if (!p.active) {
+                    rarityBadge = `<span class="bg-slate-200 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold">ปิดใช้งาน</span>`;
+                } else if (Number(p.stock) === 0) {
+                    rarityBadge = `<span class="bg-rose-100 text-rose-700 px-2 py-0.5 rounded text-[10px] font-black">❌ ของหมด</span>`;
+                } else if (pct <= 5) {
+                    rarityBadge = `<span class="bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded text-[10px] font-black">🌟 ออกยากมาก (${pct}%)</span>`;
+                } else if (pct <= 20) {
+                    rarityBadge = `<span class="bg-sky-100 text-sky-900 border border-sky-300 px-2 py-0.5 rounded text-[10px] font-bold">🎁 ออกปานกลาง (${pct}%)</span>`;
+                } else {
+                    rarityBadge = `<span class="bg-emerald-100 text-emerald-900 border border-emerald-300 px-2 py-0.5 rounded text-[10px] font-bold">🥤 ออกง่าย (${pct}%)</span>`;
+                }
+
+                const row = document.createElement('div');
+                row.className = `p-3 rounded-2xl border-2 transition ${p.active ? 'bg-white border-slate-200 hover:border-amber-300' : 'bg-slate-100/70 border-dashed border-slate-300 opacity-60'} shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3`;
+                row.innerHTML = `
+                    <div class="flex items-center gap-2 flex-1 min-w-0">
+                        <input type="text" value="${p.icon || '🎁'}" maxlength="4" 
+                            onchange="updateWheelPrizeField('${p.id}', 'icon', this.value)" 
+                            class="w-10 h-10 text-center text-lg bg-slate-50 border-2 border-slate-200 rounded-xl focus:outline-none focus:border-amber-400 shrink-0 font-bold" title="แก้ไขไอคอน / อีโมจิ">
+                        <div class="flex-1 min-w-0">
+                            <input type="text" value="${p.name}" 
+                                onchange="updateWheelPrizeField('${p.id}', 'name', this.value)" 
+                                placeholder="พิมพ์ชื่อของรางวัล..." 
+                                class="w-full px-3 py-1.5 text-xs font-black text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-teal-500">
+                            <div class="mt-1 flex items-center gap-1.5 flex-wrap">
+                                ${rarityBadge}
+                                <span class="text-[10px] text-slate-500 font-medium">สต็อก: <b>${Number(p.stock) === -1 || p.stock === '' ? 'ไม่จำกัด' : p.stock + ' ชิ้น'}</b></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                        <div class="text-right">
+                            <label class="block text-[10px] font-black text-slate-500">น้ำหนัก (Weight)</label>
+                            <input type="number" min="1" max="500" value="${p.weight || 1}" 
+                                onchange="updateWheelPrizeField('${p.id}', 'weight', this.value)" 
+                                class="w-16 px-2 py-1 text-xs font-black text-center bg-amber-50 border border-amber-300 rounded-lg focus:outline-none focus:border-amber-500" title="ค่าน้อย = ออกยาก / ค่ามาก = ออกง่าย">
+                        </div>
+
+                        <div class="text-right">
+                            <label class="block text-[10px] font-black text-slate-500">สต็อก (ชิ้น)</label>
+                            <input type="number" min="-1" max="9999" value="${p.stock !== undefined ? p.stock : -1}" 
+                                onchange="updateWheelPrizeField('${p.id}', 'stock', this.value)" 
+                                placeholder="-1"
+                                class="w-16 px-2 py-1 text-xs font-black text-center bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:border-teal-500" title="-1 คือไม่จำกัดจำนวน">
+                        </div>
+
+                        <label class="flex items-center gap-1 cursor-pointer text-xs font-bold text-slate-700 ml-1">
+                            <input type="checkbox" ${p.active ? 'checked' : ''} 
+                                onchange="updateWheelPrizeField('${p.id}', 'active', this.checked)" 
+                                class="w-4 h-4 text-teal-600 rounded focus:ring-teal-500">
+                            <span class="text-[11px] hidden sm:inline">เปิด</span>
+                        </label>
+
+                        <button onclick="deleteWheelPrizeRow('${p.id}')" 
+                            class="w-7 h-7 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-500 flex items-center justify-center transition border border-rose-200 cursor-pointer ml-1" title="ลบรางวัลนี้">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+        };
+
+        window.updateWheelPrizeField = function(id, field, value) {
+            const p = wheelPrizes.find(item => item.id === id);
+            if (!p) return;
+            if (field === 'weight') p.weight = Math.max(1, parseInt(value, 10) || 1);
+            else if (field === 'stock') p.stock = value === '' ? -1 : parseInt(value, 10);
+            else if (field === 'active') p.active = !!value;
+            else if (field === 'name') p.name = value.trim() || 'ของรางวัล';
+            else if (field === 'icon') p.icon = value.trim() || '🎁';
+
+            renderWheelPrizesTable();
+            drawPreviewWheel();
+        };
+
+        window.addWheelPrizeRow = function() {
+            const nextIdx = wheelPrizes.length + 1;
+            const newPrize = {
+                id: 'p_' + Date.now(),
+                name: 'ของรางวัลใหม่ ชิ้นที่ ' + nextIdx,
+                icon: '🎁',
+                weight: 15,
+                stock: 10,
+                active: true,
+                color: WHEEL_SLICE_PALETTE[wheelPrizes.length % WHEEL_SLICE_PALETTE.length]
+            };
+            wheelPrizes.push(newPrize);
+            renderWheelPrizesTable();
+            drawPreviewWheel();
+            showToast("เพิ่มช่องของรางวัลใหม่เรียบร้อยแล้วค่ะ พิมพ์แก้ไขชื่อได้เลย", "info");
+        };
+
+        window.deleteWheelPrizeRow = function(id) {
+            if (wheelPrizes.length <= 2) {
+                showToast("วงล้อต้องมีของรางวัลอย่างน้อย 2 รายการค่ะ", "warning");
+                return;
+            }
+            wheelPrizes = wheelPrizes.filter(p => p.id !== id);
+            renderWheelPrizesTable();
+            drawPreviewWheel();
+        };
+
+        window.resetDefaultWheelPrizes = function() {
+            if (!confirm("ต้องการคืนค่ารายการของรางวัลวงล้อเป็นค่าเริ่มต้นใช่หรือไม่?")) return;
+            wheelPrizes = JSON.parse(JSON.stringify(DEFAULT_WHEEL_PRIZES));
+            renderWheelPrizesTable();
+            drawPreviewWheel();
+            showToast("คืนค่ารางวัลวงล้อเริ่มต้นเรียบร้อยแล้วค่ะ", "info");
+        };
+
+        window.saveWheelSettings = function() {
+            localStorage.setItem('health_sprint_wheel_prizes', JSON.stringify(wheelPrizes));
+            closeWheelSettingsModal();
+            drawLuckyWheel('stage-wheel-canvas', currentWheelAngle);
+            showToast("บันทึกการตั้งค่าของรางวัลวงล้อเรียบร้อยแล้วค่ะ! 🎡✨", "success");
+        };
+
         // Quick helper to award alternate prize for duplicate winner
         window.awardAlternatePrize = function(empId, prizeType) {
             const prizeName = prizeType === 'consolation' ? gameRules.consolationPrizeName : gameRules.rank1PrizeName;
@@ -1928,13 +2551,15 @@ function doPost(e) {<br>
                     clearInterval(botSimulationInterval);
                     isPlaying = false;
                     isCountdownRunning = false;
+                    isFinishingRace = false;
                     activeRacers = {};
                     raceState = {
                         status: 'lobby',
                         startTime: 0,
                         duration: GAME_DURATION,
                         adminStarted: false,
-                        adminStartedAt: 0
+                        adminStartedAt: 0,
+                        heatId: null
                     };
 
                     const waitBox = document.getElementById('step-waiting');
@@ -1965,6 +2590,47 @@ function doPost(e) {<br>
                         prizesAwarded[msg.empId] = msg.prizeData;
                         renderAdminDashboard();
                         renderAllLiveViews();
+                    }
+                    break;
+                }
+
+                case 'WHEEL_SPIN_TRIGGER': {
+                    const isHostScreen = (window.currentActiveView === 'stage') || 
+                                         (window.currentActiveView === 'admin') || 
+                                         isAdminAuthenticated || 
+                                         (!currentPlayer);
+                    if (isHostScreen && !isWheelSpinning && !activeHeatWonPrize) {
+                        executeLuckyWheelSpin(msg.empId);
+                    }
+                    break;
+                }
+
+                case 'WHEEL_SPIN_START': {
+                    const btn = document.getElementById('btn-player-spin-wheel');
+                    const indicator = document.getElementById('mobile-wheel-spinning-indicator');
+                    if (btn) btn.classList.add('hidden');
+                    if (indicator) indicator.classList.remove('hidden');
+
+                    const isHostScreen = (window.currentActiveView === 'stage') || 
+                                         (window.currentActiveView === 'admin') || 
+                                         isAdminAuthenticated || 
+                                         (!currentPlayer);
+                    if (!isHostScreen && msg.targetAngle && !isWheelSpinning) {
+                        animateWheelSpin(msg.targetAngle, msg.duration || 5500);
+                    }
+                    break;
+                }
+
+                case 'WHEEL_SPIN_RESULT': {
+                    const indicator = document.getElementById('mobile-wheel-spinning-indicator');
+                    const wonBox = document.getElementById('mobile-wheel-won-box');
+                    const wonName = document.getElementById('mobile-won-prize-name');
+                    if (indicator) indicator.classList.add('hidden');
+                    if (wonName) wonName.innerHTML = `${msg.prizeIcon || '🎁'} ${msg.prizeName}`;
+                    if (wonBox) wonBox.classList.remove('hidden');
+
+                    if (typeof confetti === 'function' && currentPlayer && currentPlayer.id === msg.empId) {
+                        confetti({ particleCount: 90, spread: 80, origin: { y: 0.6 } });
                     }
                     break;
                 }
@@ -2190,7 +2856,8 @@ function doPost(e) {<br>
                             startTime: data.startTime || 0,
                             duration: data.duration || 30,
                             adminStarted: !!(data.adminStarted || data.status === 'countdown' || data.status === 'racing'),
-                            adminStartedAt: data.adminStartedAt || 0
+                            adminStartedAt: data.adminStartedAt || 0,
+                            heatId: data.heatId || null
                         };
                         activeRacers = data.racers || {};
                         
@@ -2251,6 +2918,7 @@ function doPost(e) {<br>
                     duration: raceState.duration,
                     adminStarted: raceState.adminStarted || false,
                     adminStartedAt: raceState.adminStartedAt || 0,
+                    heatId: raceState.heatId || null,
                     racers: activeRacers
                 }, { merge: true });
             } catch (e) {
@@ -2452,6 +3120,9 @@ function doPost(e) {<br>
             if (view === 'stage') {
                 renderAllLiveViews();
                 if (window.generateStageQRCode) window.generateStageQRCode();
+                setTimeout(() => {
+                    if (window.drawLuckyWheel) drawLuckyWheel('stage-wheel-canvas', currentWheelAngle);
+                }, 60);
             }
             if (view === 'admin') renderAdminDashboard();
         };
@@ -2909,13 +3580,15 @@ function doPost(e) {<br>
             clearInterval(botSimulationInterval);
             isPlaying = false;
             isCountdownRunning = false;
+            isFinishingRace = false;
             activeRacers = {};
             raceState = { 
                 status: 'lobby', 
                 startTime: 0, 
                 duration: GAME_DURATION,
                 adminStarted: false,
-                adminStartedAt: 0
+                adminStartedAt: 0,
+                heatId: null
             };
             broadcastSyncMessage({
                 type: 'RESET'
@@ -2940,12 +3613,17 @@ function doPost(e) {<br>
             initAudio();
             attachMotionListener();
 
+            // Generate unique heatId for this specific race round
+            const currentHeatId = 'heat_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+
             // Reset scores to 0 for everyone in this heat
             racerIds.forEach(id => { activeRacers[id].score = 0; });
             raceState.status = 'countdown';
             raceState.adminStarted = true;
             raceState.adminStartedAt = Date.now();
             raceState.startTime = 0;
+            raceState.heatId = currentHeatId;
+            isFinishingRace = false;
             
             showToast("แอดมินส่งสัญญาณปล่อยตัวแล้ว! กำลังนับถอยหลัง...", "success");
 
@@ -2954,6 +3632,7 @@ function doPost(e) {<br>
                 type: 'START',
                 timestamp: Date.now(),
                 duration: GAME_DURATION,
+                heatId: currentHeatId,
                 racers: activeRacers
             });
             
@@ -3109,6 +3788,10 @@ function doPost(e) {<br>
                 if (!isPlaying && isWaiting) {
                     catchupToActiveRace();
                 }
+            } else if (newStatus === 'finished') {
+                if (isPlaying) {
+                    finishSimultaneousRace();
+                }
             } else if (newStatus === 'lobby') {
                 if (isPlaying) {
                     finishSimultaneousRace();
@@ -3165,10 +3848,14 @@ function doPost(e) {<br>
 
         function beginSimultaneousRace() {
             isPlaying = true;
+            isFinishingRace = false;
             currentScore = 0;
             lastSyncedScore = 0;
             raceState.status = 'racing';
             raceState.startTime = Date.now();
+            if (!raceState.heatId) {
+                raceState.heatId = 'heat_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+            }
             
             // Blur and purge any leftover focus
             if (document.activeElement && typeof document.activeElement.blur === 'function') {
@@ -3314,8 +4001,13 @@ function doPost(e) {<br>
             updateMyLiveScoreInCloud(currentScore);
         };
 
+        let isFinishingRace = false;
+        const loggedHeatIds = new Set();
+
         async function finishSimultaneousRace() {
+            if (isFinishingRace) return;
             if (!isPlaying && raceState.status === 'finished') return;
+
             isPlaying = false;
             isCountdownRunning = false;
             clearInterval(gameTimerInterval);
@@ -3340,102 +4032,136 @@ function doPost(e) {<br>
                 confetti({ particleCount: 90, spread: 80, origin: { y: 0.6 } });
             }
 
-            // Record every participant's score from this heat into permanent playLogs
-            const timeStr = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            const todayDateStr = new Date().toLocaleDateString('th-TH');
-            const fullDateTime = todayDateStr + ' ' + timeStr;
-            const sortedHeatRacers = Object.values(activeRacers).sort((a, b) => b.score - a.score);
-            
-            for (let i = 0; i < sortedHeatRacers.length; i++) {
-                const r = sortedHeatRacers[i];
-                const heatRank = i + 1;
-                const cleanEmpId = String(r.empId || '').trim().replace(/^'/, '');
-                const textEmpId = "'" + cleanEmpId; // Single quote forces Google Sheets to treat as pure text
+            // CRITICAL ARCHITECTURE RULE (PREVENT DUPLICATE ENTRIES):
+            // Only the Stage screen or Admin screen (Authoritative Host) records race logs to Google Sheets & playLogs.
+            // Players' mobile devices are client controllers and MUST NEVER save to Google Sheets or duplicate logs!
+            const isHostLogger = (window.currentActiveView === 'stage') || 
+                                 (window.currentActiveView === 'admin') || 
+                                 isAdminAuthenticated || 
+                                 (!currentPlayer);
 
-                let assignedPrize = gameRules.consolationPrizeName;
-                let isDuplicateWin = false;
-                let duplicateReason = "";
+            if (!isHostLogger) {
+                // Mobile player screen: Show individual race results only!
+                if (currentPlayer && activeRacers[currentPlayer.id]) {
+                    showMobileResultScreen();
+                }
+                return;
+            }
 
-                if (heatRank === 1) {
-                    const eligibility = checkGrandPrizeEligibility(cleanEmpId, todayDateStr);
-                    if (eligibility.eligible) {
-                        assignedPrize = gameRules.rank1PrizeName;
-                        if (!prizesAwarded[cleanEmpId]) {
-                            prizesAwarded[cleanEmpId] = {
-                                rank: 1,
-                                prizeName: gameRules.rank1PrizeName,
-                                awardedAt: timeStr,
-                                wonDate: todayDateStr
-                            };
-                            localStorage.setItem('health_sprint_prizes', JSON.stringify(prizesAwarded));
-                        }
-                    } else {
-                        // Already received Grand Prize in today's session (or earlier per rule)
-                        isDuplicateWin = true;
-                        duplicateReason = eligibility.reason;
-                        if (gameRules.duplicateAction === 'alert_and_swap') {
-                            assignedPrize = gameRules.consolationPrizeName;
-                        } else {
+            // Host / Stage screen logging: Deduplicate by unique heatId
+            const currentHeatId = raceState.heatId || ('heat_' + (raceState.adminStartedAt || Date.now()));
+            if (loggedHeatIds.has(currentHeatId)) {
+                console.warn("Heat already recorded by Host:", currentHeatId);
+                await pushLiveRaceState();
+                renderAllLiveViews();
+                renderAdminDashboard();
+                return;
+            }
+            loggedHeatIds.add(currentHeatId);
+            isFinishingRace = true;
+
+            try {
+                // Record every participant's score from this heat into permanent playLogs
+                const timeStr = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                const todayDateStr = new Date().toLocaleDateString('th-TH');
+                const fullDateTime = todayDateStr + ' ' + timeStr;
+                const sortedHeatRacers = Object.values(activeRacers).sort((a, b) => b.score - a.score);
+                
+                for (let i = 0; i < sortedHeatRacers.length; i++) {
+                    const r = sortedHeatRacers[i];
+                    const heatRank = i + 1;
+                    const cleanEmpId = String(r.empId || '').trim().replace(/^'/, '');
+                    const textEmpId = "'" + cleanEmpId; // Single quote forces Google Sheets to treat as pure text
+
+                    let assignedPrize = gameRules.consolationPrizeName;
+                    let isDuplicateWin = false;
+                    let duplicateReason = "";
+
+                    if (heatRank === 1) {
+                        const eligibility = checkGrandPrizeEligibility(cleanEmpId, todayDateStr);
+                        if (eligibility.eligible) {
                             assignedPrize = gameRules.rank1PrizeName;
+                            if (!prizesAwarded[cleanEmpId]) {
+                                prizesAwarded[cleanEmpId] = {
+                                    rank: 1,
+                                    prizeName: gameRules.rank1PrizeName,
+                                    awardedAt: timeStr,
+                                    wonDate: todayDateStr
+                                };
+                                localStorage.setItem('health_sprint_prizes', JSON.stringify(prizesAwarded));
+                            }
+                        } else {
+                            // Already received Grand Prize in today's session (or earlier per rule)
+                            isDuplicateWin = true;
+                            duplicateReason = eligibility.reason;
+                            if (gameRules.duplicateAction === 'alert_and_swap') {
+                                assignedPrize = gameRules.consolationPrizeName;
+                            } else {
+                                assignedPrize = gameRules.rank1PrizeName;
+                            }
                         }
+                    }
+
+                    const newLog = {
+                        roundId: playLogs.length + 1,
+                        heatId: currentHeatId,
+                        empId: cleanEmpId,
+                        empIdText: textEmpId,
+                        name: r.name,
+                        dept: r.dept,
+                        score: r.score,
+                        heatRank: heatRank,
+                        prize: assignedPrize,
+                        isDuplicateWin: isDuplicateWin,
+                        duplicateReason: duplicateReason,
+                        timestamp: timeStr,
+                        dateTime: fullDateTime,
+                        date: todayDateStr
+                    };
+                    playLogs.push(newLog);
+
+                    if (db && currentUser) {
+                        try {
+                            await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'play_logs'), newLog);
+                        } catch (e) {}
+                    }
+
+                    // Send log to Google Sheets ONCE per participant from the Host/Stage screen
+                    if (googleScriptUrl && !r.isBot) {
+                        fetch(googleScriptUrl, {
+                            method: 'POST',
+                            mode: 'no-cors',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                heatId: currentHeatId,
+                                roundId: newLog.roundId,
+                                empId: textEmpId,       // Sent with ' so Sheets appendRow never strips 0!
+                                empIdRaw: cleanEmpId,
+                                name: newLog.name,
+                                dept: newLog.dept,
+                                score: newLog.score,
+                                heatRank: newLog.heatRank,
+                                prize: newLog.prize,
+                                timestamp: newLog.timestamp,
+                                dateTime: newLog.dateTime
+                            })
+                        }).catch(() => {});
                     }
                 }
 
-                const newLog = {
-                    roundId: playLogs.length + i + 1,
-                    empId: cleanEmpId,
-                    empIdText: textEmpId,
-                    name: r.name,
-                    dept: r.dept,
-                    score: r.score,
-                    heatRank: heatRank,
-                    prize: assignedPrize,
-                    isDuplicateWin: isDuplicateWin,
-                    duplicateReason: duplicateReason,
-                    timestamp: timeStr,
-                    dateTime: fullDateTime,
-                    date: todayDateStr
-                };
-                playLogs.push(newLog);
+                localStorage.setItem('health_sprint_play_logs', JSON.stringify(playLogs));
+                renderAdminDashboard();
 
-                if (db && currentUser) {
-                    try {
-                        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'play_logs'), newLog);
-                    } catch (e) {}
+                await pushLiveRaceState();
+                renderAllLiveViews();
+                renderAdminDashboard();
+
+                // If host screen also had a player active, show their result
+                if (currentPlayer && activeRacers[currentPlayer.id]) {
+                    showMobileResultScreen();
                 }
-
-                // Also send log back to Google Sheets if connected and not a demo bot
-                if (googleScriptUrl && !r.isBot) {
-                    fetch(googleScriptUrl, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            roundId: newLog.roundId,
-                            empId: textEmpId,       // Sent with ' so Sheets appendRow never strips 0!
-                            empIdRaw: cleanEmpId,
-                            name: newLog.name,
-                            dept: newLog.dept,
-                            score: newLog.score,
-                            heatRank: newLog.heatRank,
-                            prize: newLog.prize,
-                            timestamp: newLog.timestamp,
-                            dateTime: newLog.dateTime
-                        })
-                    }).catch(() => {});
-                }
-            }
-
-            localStorage.setItem('health_sprint_play_logs', JSON.stringify(playLogs));
-            renderAdminDashboard();
-
-            await pushLiveRaceState();
-            renderAllLiveViews();
-            renderAdminDashboard();
-
-            // Show Result screen on Mobile if player was participating
-            if (currentPlayer && activeRacers[currentPlayer.id]) {
-                showMobileResultScreen();
+            } finally {
+                isFinishingRace = false;
             }
         }
 
@@ -3565,6 +4291,7 @@ function doPost(e) {<br>
 
         // Reset stage and prepare next group of players
         window.nextHeatAndReset = async function() {
+            activeHeatWonPrize = null;
             const overlay = document.getElementById('stage-winner-overlay');
             if (overlay) overlay.classList.add('hidden');
             await resetCurrentRaceLobby();
@@ -3718,6 +4445,70 @@ function doPost(e) {<br>
                 </div>
             `;
 
+            // LUCKY WHEEL SHOWCASE (Rank 1 Champion)
+            if (!isDuplicate) {
+                const wonInfo = activeHeatWonPrize && activeHeatWonPrize.empId === winner1.empId ? activeHeatWonPrize.prize : null;
+                html += `
+                    <div class="bg-gradient-to-br from-amber-500/25 via-yellow-500/20 to-teal-500/25 border-4 border-amber-300 rounded-3xl p-5 sm:p-7 shadow-2xl flex flex-col items-center justify-center text-center backdrop-blur-md relative overflow-hidden">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-3xl animate-bounce">🎡</span>
+                            <h3 class="text-xl sm:text-2xl font-black bg-gradient-to-r from-amber-200 via-yellow-100 to-amber-300 bg-clip-text text-transparent">
+                                วงล้อหมุนลุ้นรางวัลใหญ่ (Grand Prize Wheel)
+                            </h3>
+                            <span class="text-3xl animate-bounce">👑</span>
+                        </div>
+                        <p class="text-xs sm:text-sm text-amber-200 mb-4 max-w-xl">
+                            ผู้ชนะเลิศอันดับ 1 (คุณ ${winner1.name}) ได้รับสิทธิ์หมุนวงล้อลุ้นรางวัลใหญ่! <br class="hidden sm:inline">
+                            <span class="text-yellow-300 font-bold">📱 ผู้ชนะสามารถแตะปุ่มหมุนสดจากจอมือถือ</span> หรือ <span class="text-teal-200 font-bold">แอดมินคลิกปุ่มด้านล่างเพื่อหมุนแทนได้ค่ะ</span>
+                        </p>
+
+                        <!-- Canvas Wheel Display -->
+                        <div class="relative flex items-center justify-center my-3">
+                            <!-- Pointer Needle -->
+                            <div class="absolute -top-3.5 z-20 flex flex-col items-center pointer-events-none drop-shadow-[0_4px_10px_rgba(0,0,0,0.6)]">
+                                <div class="w-8 h-10 bg-gradient-to-b from-rose-500 to-red-600 rounded-t-md border-2 border-white shadow-xl flex items-center justify-center" style="clip-path: polygon(50% 100%, 0 0, 100% 0);">
+                                    <div class="w-2.5 h-2.5 bg-amber-300 rounded-full mb-3"></div>
+                                </div>
+                            </div>
+
+                            <!-- Canvas Circle -->
+                            <div class="p-2 sm:p-3 rounded-full bg-gradient-to-tr from-amber-500 via-yellow-300 to-amber-600 shadow-[0_12px_40px_rgba(245,158,11,0.6)] border-4 border-amber-200">
+                                <canvas id="stage-wheel-canvas" width="380" height="380" class="rounded-full shadow-inner bg-slate-900 max-w-[280px] sm:max-w-[360px] h-auto"></canvas>
+                            </div>
+
+                            <!-- Center Spin Hub Button -->
+                            <button id="btn-stage-wheel-center" onclick="adminTriggerWheelSpin()" 
+                                class="absolute z-10 w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-b from-amber-300 via-yellow-400 to-amber-500 border-4 border-white text-slate-900 font-black text-xs sm:text-sm shadow-[0_6px_20px_rgba(0,0,0,0.4)] flex flex-col items-center justify-center cursor-pointer transform hover:scale-105 active:scale-95 transition ${wonInfo ? 'hidden' : ''}">
+                                <i class="fa-solid fa-arrows-spin text-xl sm:text-2xl text-amber-950 mb-0.5"></i>
+                                <span class="font-black text-amber-950">หมุนเลย!</span>
+                            </button>
+                        </div>
+
+                        <!-- Spin Status and Trigger Bar -->
+                        <div id="stage-wheel-controls-area" class="mt-3 flex flex-col sm:flex-row items-center gap-3 ${wonInfo ? 'hidden' : ''}">
+                            <button id="btn-spin-wheel-stage" onclick="adminTriggerWheelSpin()" 
+                                class="btn-clay-yellow px-8 py-3.5 text-base sm:text-lg font-black shadow-xl flex items-center gap-2 cursor-pointer animate-pulse">
+                                <i class="fa-solid fa-dharmachakra text-xl"></i>
+                                <span>🎡 กดหมุนวงล้อสด (แอดมินหมุนให้)</span>
+                            </button>
+                            <span class="text-xs text-amber-200 font-bold bg-amber-950/60 px-3.5 py-2 rounded-xl border border-amber-400/30 flex items-center gap-1.5">
+                                <i class="fa-solid fa-mobile-screen text-amber-400 animate-bounce"></i> หรือรอผู้ชนะแตะหมุนสดจากหน้าจอมือถือ
+                            </span>
+                        </div>
+
+                        <!-- Won Announcement Card -->
+                        <div id="stage-wheel-won-card" class="${wonInfo ? '' : 'hidden'} mt-5 w-full max-w-lg bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 text-slate-900 p-5 rounded-3xl border-4 border-white shadow-2xl animate-bounce-slow">
+                            <span class="text-3xl">🎉👑✨</span>
+                            <h4 class="text-lg sm:text-2xl font-black mt-1">ยินดีด้วยค่ะ! คุณ ${winner1.name} ได้รับ:</h4>
+                            <div id="stage-wheel-won-prize-text" class="text-2xl sm:text-3xl font-black text-teal-800 my-2 bg-white/90 py-2.5 px-4 rounded-2xl shadow-inner border border-amber-200">
+                                ${wonInfo ? (wonInfo.icon || '🎁') + ' ' + wonInfo.name : ''}
+                            </div>
+                            <p class="text-xs font-bold text-slate-700">บันทึกรางวัลลงในประวัติและชีตเรียบร้อยแล้วค่ะ 🎁</p>
+                        </div>
+                    </div>
+                `;
+            }
+
             // Consolation Snacks for ALL other participants (Rank 2+)
             if (others.length > 0) {
                 html += `
@@ -3762,6 +4553,12 @@ function doPost(e) {<br>
             grid.innerHTML = html;
             const othersContainer = document.getElementById('stage-heat-others-list');
             if (othersContainer) othersContainer.classList.add('hidden');
+
+            if (!isDuplicate) {
+                setTimeout(() => {
+                    drawLuckyWheel('stage-wheel-canvas', currentWheelAngle);
+                }, 60);
+            }
         }
 
         // =====================================================================
@@ -3943,12 +4740,35 @@ function doPost(e) {<br>
                     const todayStr = new Date().toLocaleDateString('th-TH');
                     const eligibility = checkGrandPrizeEligibility(currentPlayer.id, todayStr);
                     if (eligibility.eligible) {
+                        const wonInfo = activeHeatWonPrize && activeHeatWonPrize.empId === currentPlayer.id ? activeHeatWonPrize.prize : null;
                         prizeBox.className = "bg-gradient-to-r from-amber-100 via-yellow-100 to-amber-200 border-2 border-amber-400 rounded-3xl p-4 my-3 text-center shadow-md animate-pulse";
                         prizeBox.innerHTML = `
-                            <div class="text-3xl mb-1">👑 🎁</div>
+                            <div class="text-3xl mb-1">👑 🎡</div>
                             <p class="text-xs font-black text-amber-900 uppercase tracking-wider">🎉 ยินดีด้วยค่ะ! คุณชนะเลิศอันดับ 1 ของรอบนี้</p>
-                            <p class="text-base sm:text-lg font-black text-amber-950 mt-1">ได้รับ "${gameRules.rank1PrizeName}" 🎟️</p>
-                            <p class="text-xs text-amber-800 mt-1">ติดต่อรับสิทธิ์จับฉลากที่เจ้าหน้าที่แอดมินประจำบูธได้เลยค่ะ!</p>
+                            <p class="text-base sm:text-lg font-black text-amber-950 mt-1">ได้รับสิทธิ์หมุนวงล้อลุ้นรางวัลใหญ่! 🎡</p>
+                            
+                            <div id="mobile-wheel-action-area" class="${wonInfo ? 'hidden' : ''} mt-3">
+                                <button id="btn-player-spin-wheel" onclick="playerTriggerWheelSpin()" 
+                                    class="btn-clay-yellow w-full py-3.5 px-4 font-black text-base shadow-xl flex items-center justify-center gap-2 cursor-pointer animate-bounce">
+                                    <i class="fa-solid fa-arrows-spin text-xl"></i>
+                                    <span>🎡 แตะเพื่อหมุนวงล้อสดบนจอใหญ่!</span>
+                                </button>
+                                <p class="text-[11px] text-amber-800 mt-2 font-bold">แตะปุ่มนี้เพื่อสั่งให้วงล้อบนจอใหญ่ของบูธเริ่มหมุนสดๆ ได้เลยค่ะ!</p>
+                            </div>
+
+                            <div id="mobile-wheel-spinning-indicator" class="hidden mt-3 py-3 px-4 bg-amber-200/80 rounded-2xl border border-amber-400 text-amber-950 font-black text-sm flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-spinner fa-spin text-lg text-amber-700"></i>
+                                <span>วงล้อกำลังหมุนบนจอใหญ่... ร่วมลุ้นกันค่ะ!</span>
+                            </div>
+
+                            <div id="mobile-wheel-won-box" class="${wonInfo ? '' : 'hidden'} mt-3 bg-white p-4 rounded-2xl border-2 border-amber-400 text-slate-800 shadow-md">
+                                <span class="text-2xl">🎉👑✨</span>
+                                <p class="text-xs font-bold text-amber-800 uppercase tracking-wider mt-1">รางวัลใหญ่ที่คุณได้รับคือ:</p>
+                                <h4 id="mobile-won-prize-name" class="text-xl font-black text-teal-700 mt-1">
+                                    ${wonInfo ? (wonInfo.icon || '🎁') + ' ' + wonInfo.name : ''}
+                                </h4>
+                                <p class="text-xs text-slate-500 mt-1">ติดต่อรับของรางวัลกับเจ้าหน้าที่แอดมินประจำบูธได้เลยค่ะ!</p>
+                            </div>
                         `;
                     } else {
                         prizeBox.className = "bg-gradient-to-r from-amber-50 via-teal-50 to-emerald-50 border-2 border-teal-300 rounded-3xl p-4 my-3 text-center shadow-md";
