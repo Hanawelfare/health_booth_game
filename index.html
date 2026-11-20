@@ -860,8 +860,8 @@
                 <button onclick="openRulesSettingsModal()" class="btn-clay-white px-3.5 py-2.5 font-extrabold text-xs flex items-center gap-1.5 cursor-pointer text-amber-800" title="ตั้งค่ากติการับรางวัลใหญ่รายวัน และเปลี่ยนชื่อรางวัล">
                     <i class="fa-solid fa-sliders text-amber-600"></i> ตั้งค่ากติกา & รางวัล
                 </button>
-                <button onclick="openWheelSettingsModal()" class="btn-clay-yellow px-3.5 py-2.5 font-black text-xs flex items-center gap-1.5 cursor-pointer shadow-sm text-slate-900" title="พิมพ์รายการของรางวัลใหญ่ ตั้งค่าสต็อก และกำหนดโอกาสออก (ออกยาก/ออกง่าย)">
-                    <i class="fa-solid fa-dharmachakra text-amber-800 text-sm"></i> 🎡 ตั้งค่าวงล้อรางวัลใหญ่
+                <button onclick="openWheelSettingsModal()" class="btn-clay-yellow px-3.5 py-2.5 font-black text-xs flex items-center gap-1.5 cursor-pointer shadow-sm text-slate-900" title="พิมพ์เพิ่ม/แก้ไขรายชื่อของรางวัลสำหรับจับฉลาก">
+                    <i class="fa-solid fa-boxes-stacked text-amber-800 text-sm"></i> 🎁 จัดการรายชื่อรางวัล (จับฉลาก)
                 </button>
                 <button onclick="openEmployeeModal()" class="btn-clay-white px-3.5 py-2.5 font-extrabold text-xs flex items-center gap-1.5 cursor-pointer">
                     <i class="fa-solid fa-users-gear text-teal-600"></i> ฐานข้อมูลพนักงาน (<span id="db-count">0</span>)
@@ -967,6 +967,37 @@
                     <p class="text-xs font-extrabold text-slate-500">แจกรางวัลไปแล้ว</p>
                     <p id="stat-prizes-given" class="text-2xl sm:text-3xl font-black text-slate-800">0 <span class="text-xs font-normal text-slate-400">รางวัล</span></p>
                 </div>
+            </div>
+        </div>
+
+        <!-- INSTANT EMPLOYEE PRIVILEGE CHECKER (ตรวจสอบสิทธิ์จับฉลากรางวัลใหญ่ด่วน) -->
+        <div class="clay-card p-4 sm:p-5 border-4 border-white shadow-xl bg-gradient-to-r from-amber-50 via-white to-teal-50">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-11 h-11 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center text-xl shadow-xs shrink-0">
+                        <i class="fa-solid fa-id-card-clip"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-black text-slate-900 text-sm sm:text-base flex items-center gap-2">
+                            <span>🔍 ตรวจสอบสิทธิ์จับฉลากรางวัลใหญ่ด่วน (Instant Privilege Checker)</span>
+                        </h4>
+                        <p class="text-xs text-slate-500">
+                            พิมพ์รหัสพนักงาน 6 หลัก เพื่อเช็กทันทีว่าเคยได้รับรางวัลใหญ่ไปแล้วในวันนี้หรือไม่
+                        </p>
+                    </div>
+                </div>
+                <form onsubmit="event.preventDefault(); executeQuickPrivilegeCheck();" class="flex items-center gap-2 w-full md:w-auto">
+                    <input type="text" id="admin-quick-checker-input" placeholder="พิมพ์รหัสพนักงาน (เช่น 084843)..."
+                        inputmode="numeric" pattern="[0-9]*" maxlength="10"
+                        class="w-full md:w-64 bg-white border-2 border-amber-300 rounded-2xl px-4 py-2 text-xs font-black text-slate-800 placeholder-slate-400 focus:outline-none focus:border-teal-500 shadow-inner">
+                    <button type="submit" class="btn-clay-yellow px-4 py-2 text-xs font-black shrink-0 cursor-pointer shadow-sm flex items-center gap-1.5">
+                        <i class="fa-solid fa-magnifying-glass"></i> <span>ตรวจสิทธิ์</span>
+                    </button>
+                </form>
+            </div>
+            <!-- Quick Checker Result Container -->
+            <div id="admin-quick-checker-result" class="hidden mt-3 pt-3 border-t-2 border-dashed border-amber-200">
+                <!-- Populated via JS -->
             </div>
         </div>
 
@@ -1100,14 +1131,34 @@
 
             <div class="space-y-3">
                 <div>
-                    <label class="block text-xs font-black text-slate-600 mb-1">ระบุชื่อรางวัลที่มอบให้:</label>
-                    <input type="text" id="prize-name-input" placeholder="เช่น สิทธิ์จับฉลากรางวัลใหญ่, ขนมขบเคี้ยว..." 
-                        class="w-full px-4 py-2.5 bg-slate-50 border-2 border-slate-200 rounded-2xl text-sm font-bold focus:outline-none focus:border-teal-500">
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-xs font-black text-slate-700">
+                            🔍 ค้นหาหรือพิมพ์ระบุชื่อรางวัล:
+                        </label>
+                        <button type="button" onclick="closePrizeModal(); openWheelSettingsModal();" class="text-[11px] text-teal-700 hover:text-teal-900 font-extrabold flex items-center gap-1 cursor-pointer">
+                            <i class="fa-solid fa-pen-to-square"></i> แก้ไข/เพิ่มรายการของรางวัล
+                        </button>
+                    </div>
+                    <div class="relative">
+                        <input type="text" id="prize-name-input" oninput="filterModalPrizeList(this.value)" placeholder="พิมพ์ค้นหา หรือพิมพ์ชื่อรางวัลที่จับได้ที่นี่..." 
+                            class="w-full pl-4 pr-10 py-2.5 bg-slate-50 border-2 border-slate-200 rounded-2xl text-sm font-bold focus:outline-none focus:border-teal-500 shadow-inner">
+                        <button type="button" onclick="document.getElementById('prize-name-input').value=''; filterModalPrizeList('');" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 text-xs cursor-pointer" title="ล้างข้อความ">
+                            <i class="fa-solid fa-eraser"></i>
+                        </button>
+                    </div>
                 </div>
-                <div class="flex flex-wrap gap-1.5">
-                    <button type="button" onclick="document.getElementById('prize-name-input').value='สิทธิ์จับฉลากรางวัลใหญ่ (Grand Lucky Draw)'" class="text-[11px] bg-amber-50 border border-amber-300 hover:bg-amber-100 text-amber-900 px-3 py-1 rounded-full font-bold shadow-xs">👑 สิทธิ์จับฉลากรางวัลใหญ่</button>
-                    <button type="button" onclick="document.getElementById('prize-name-input').value='ขนมขบเคี้ยว / ของว่างแสนอร่อย (Snack Reward)'" class="text-[11px] bg-teal-50 border border-teal-300 hover:bg-teal-100 text-teal-900 px-3 py-1 rounded-full font-bold shadow-xs">🍬 ขนมขบเคี้ยว / ของว่าง</button>
-                    <button type="button" onclick="document.getElementById('prize-name-input').value='ของที่ระลึกบูธสุขภาพ (Health Souvenir)'" class="text-[11px] bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 px-3 py-1 rounded-full font-bold shadow-xs">🎁 ของที่ระลึกบูธสุขภาพ</button>
+
+                <!-- Dynamic Clickable Prize Chips (Filtered live via search) -->
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <p class="text-[11px] font-extrabold text-slate-600">
+                            แตะเพื่อเลือกของรางวัลที่พนักงานจับฉลากได้:
+                        </p>
+                        <span class="text-[10px] text-slate-400 font-bold">* พิมพ์ค้นหาได้ หรือคลิกเลือกได้ทันที</span>
+                    </div>
+                    <div id="modal-prize-chips-container" class="flex flex-wrap gap-1.5 max-h-44 overflow-y-auto p-2 bg-slate-50/80 rounded-2xl border border-slate-200 shadow-inner">
+                        <!-- Populated dynamically via JS -->
+                    </div>
                 </div>
             </div>
 
@@ -1209,7 +1260,7 @@
         <div class="clay-card max-w-4xl w-full p-5 sm:p-7 border-4 border-white shadow-2xl max-h-[92vh] flex flex-col">
             <div class="flex justify-between items-center mb-2">
                 <h3 class="font-black text-xl text-slate-800 flex items-center gap-2">
-                    <span class="text-2xl animate-spin-slow">🎡</span> ตั้งค่าของรางวัลวงล้อ & โอกาสออก (Grand Prizes)
+                    <span class="text-2xl">🎁</span> จัดการรายชื่อของรางวัลสำหรับจับฉลาก (Lucky Draw Prize List)
                 </h3>
                 <button onclick="closeWheelSettingsModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition cursor-pointer">
                     <i class="fa-solid fa-xmark text-lg"></i>
@@ -1217,14 +1268,14 @@
             </div>
 
             <p class="text-xs text-slate-600 mb-3">
-                พิมพ์แก้ไขชื่อรางวัล ตั้งค่าสต็อกคงเหลือ และกำหนด <b>น้ำหนักโอกาสออก (Weight)</b> เพื่อให้รางวัลใหญ่บางชิ้นออกยากเป็นพิเศษ ระบบจะคำนวณเปอร์เซ็นต์โอกาสออกจริงให้อัตโนมัติค่ะ
+                พิมพ์เพิ่มชื่อรางวัล แก้ไขชื่อ และกำหนดจำนวนสต็อกของรางวัลสำหรับจับฉลากหน้างาน แอดมินสามารถค้นหาและคลิกบันทึกได้ทันทีค่ะ
             </p>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1 overflow-hidden min-h-0">
                 <!-- Left 2 Cols: Prize Table -->
                 <div class="md:col-span-2 flex flex-col overflow-hidden">
                     <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-black text-slate-700">รายการของรางวัลในวงล้อ (<span id="wheel-prize-count">0</span> รายการ)</span>
+                        <span class="text-xs font-black text-slate-700">รายการของรางวัล (<span id="wheel-prize-count">0</span> รายการ)</span>
                         <button onclick="addWheelPrizeRow()" class="btn-clay-teal px-3 py-1.5 text-xs font-black flex items-center gap-1 cursor-pointer">
                             <i class="fa-solid fa-plus"></i> เพิ่มรางวัลใหม่
                         </button>
@@ -1235,29 +1286,31 @@
                     </div>
                 </div>
 
-                <!-- Right Col: Live Preview Wheel & Summary -->
-                <div class="bg-amber-50/80 p-4 rounded-2xl border-2 border-amber-200 flex flex-col items-center justify-between text-center">
+                <!-- Right Col: Prize Stock Summary & Quick Tips -->
+                <div class="bg-amber-50/80 p-4 rounded-2xl border-2 border-amber-200 flex flex-col justify-between text-left">
                     <div>
-                        <h4 class="text-xs font-black text-amber-950 uppercase tracking-wider mb-1 flex items-center justify-center gap-1">
-                            <i class="fa-solid fa-eye text-amber-600"></i> ตัวอย่างหน้าตาวงล้อสด
+                        <h4 class="text-xs font-black text-amber-950 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                            <i class="fa-solid fa-boxes-stacked text-amber-600"></i> สรุปของรางวัลในระบบ
                         </h4>
-                        <p class="text-[11px] text-amber-800 mb-2">เฉพาะรายการที่เปิดใช้งานและยังมีสต็อก</p>
-                    </div>
-
-                    <div class="relative my-2 flex items-center justify-center">
-                        <canvas id="preview-wheel-canvas" width="220" height="220" class="rounded-full shadow-md bg-slate-900 border-2 border-amber-300"></canvas>
-                        <!-- Pointer -->
-                        <div class="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-6 bg-rose-500 rounded-t border border-white shadow pointer-events-none" style="clip-path: polygon(50% 100%, 0 0, 100% 0);"></div>
-                    </div>
-
-                    <div class="w-full bg-white/95 p-2.5 rounded-xl border border-amber-300 text-[11px] text-left text-slate-700 space-y-1">
-                        <div class="flex justify-between font-bold">
-                            <span>ผลรวมน้ำหนัก:</span>
-                            <span id="wheel-total-weight-display" class="font-black text-teal-700">100</span>
+                        <p class="text-[11px] text-amber-800 mb-3">รายการทั้งหมดที่แอดมินสามารถกดเลือกและค้นหาได้ที่หน้างาน</p>
+                        
+                        <div class="space-y-2 text-xs">
+                            <div class="bg-white p-3 rounded-xl border border-amber-200 flex items-center justify-between">
+                                <span class="font-bold text-slate-600">จำนวนรายการรางวัล:</span>
+                                <span id="wheel-prize-count-badge" class="font-black text-teal-700 font-mono text-base">0 รายการ</span>
+                            </div>
+                            <div class="bg-white p-3 rounded-xl border border-amber-200 flex items-center justify-between">
+                                <span class="font-bold text-slate-600">เปิดใช้งานอยู่:</span>
+                                <span id="wheel-active-count-badge" class="font-black text-emerald-700 font-mono text-base">0 รายการ</span>
+                            </div>
                         </div>
-                        <div class="flex justify-between font-bold">
-                            <span>รางวัลที่ออกยากสุด:</span>
-                            <span id="wheel-rarest-prize-display" class="font-black text-amber-700">-</span>
+
+                        <div class="mt-4 p-3 bg-teal-50 rounded-xl border border-teal-200 text-[11px] text-teal-900 leading-relaxed">
+                            <p class="font-black mb-1 flex items-center gap-1">
+                                <i class="fa-solid fa-lightbulb text-amber-500"></i> คำแนะนำการใช้งานหน้างาน:
+                            </p>
+                            <p>• เมื่อผู้ชนะล้วงกล่องจับฉลากได้รางวัลอะไร แอดมินพิมพ์ค้นหา 1-2 ตัวอักษร หรือแตะเลือกจากปุ่มรางวัลได้ทันที</p>
+                            <p class="mt-1">• หากรางวัลใดมีระบุจำนวนสต็อก ระบบจะตัดสต็อกคงเหลือให้โดยอัตโนมัติค่ะ</p>
                         </div>
                     </div>
                 </div>
@@ -1814,6 +1867,72 @@ function doPost(e) {<br>
             }
         }
 
+        // Instant Employee Grand Prize Privilege Checker for Booth Admin
+        window.executeQuickPrivilegeCheck = function() {
+            const input = document.getElementById('admin-quick-checker-input');
+            const resultBox = document.getElementById('admin-quick-checker-result');
+            if (!input || !resultBox) return;
+            const rawId = input.value.trim().replace(/^'/, '');
+            if (!rawId) {
+                showToast("กรุณากรอกรหัสพนักงานเพื่อตรวจสอบค่ะ", "warning");
+                return;
+            }
+            const cleanId = String(rawId).trim();
+            const emp = employeeDB[cleanId] || { name: 'พนักงานรหัส ' + cleanId, dept: '-' };
+            const todayStr = new Date().toLocaleDateString('th-TH');
+
+            const allPlays = playLogs.filter(l => String(l.empId || '').trim().replace(/^'/, '') === cleanId);
+            const todayPlays = allPlays.filter(l => extractDateFromLog(l) === todayStr);
+            const eligibility = checkGrandPrizeEligibility(cleanId, todayStr);
+
+            resultBox.classList.remove('hidden');
+            if (eligibility.eligible) {
+                resultBox.innerHTML = `
+                    <div class="bg-emerald-50 border-2 border-emerald-400 rounded-2xl p-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs shadow-xs">
+                        <div class="flex items-center gap-3">
+                            <span class="text-3xl text-emerald-600">✅</span>
+                            <div class="text-left">
+                                <p class="font-black text-emerald-950 text-sm">
+                                    คุณ ${emp.name} (รหัส: ${cleanId} • แผนก: ${emp.dept})
+                                </p>
+                                <p class="text-emerald-800 mt-0.5 font-bold">
+                                    สถานะวันนี้: <b>มีสิทธิ์จับฉลากรางวัลใหญ่ 1 สิทธิ์ (หากชนะที่ 1)</b>
+                                </p>
+                                <p class="text-[11px] text-slate-500 mt-0.5">
+                                    ประวัติ: วันนี้เล่นไปแล้ว ${todayPlays.length} รอบ • รวมตลอดงาน ${allPlays.length} รอบ (ยังไม่เคยได้รางวัลใหญ่)
+                                </p>
+                            </div>
+                        </div>
+                        <span class="bg-emerald-500 text-white font-black px-3.5 py-1.5 rounded-xl shadow-xs shrink-0 inline-flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-check"></i> มีสิทธิ์จับฉลากใหญ่
+                        </span>
+                    </div>
+                `;
+            } else {
+                resultBox.innerHTML = `
+                    <div class="bg-amber-50 border-2 border-amber-400 rounded-2xl p-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs shadow-xs">
+                        <div class="flex items-center gap-3">
+                            <span class="text-3xl text-amber-500">⚠️</span>
+                            <div class="text-left">
+                                <p class="font-black text-amber-950 text-sm">
+                                    คุณ ${emp.name} (รหัส: ${cleanId} • แผนก: ${emp.dept})
+                                </p>
+                                <p class="text-amber-900 mt-0.5 font-bold">
+                                    สถานะ: <b>${eligibility.reason}</b>
+                                </p>
+                                <p class="text-[11px] text-slate-600 mt-0.5">
+                                    👉 วันนี้เล่นไปแล้ว ${todayPlays.length} รอบ • ตามกติกาจำกัด 1 สิทธิ์/วัน แนะนำให้มอบรางวัลเป็น "${gameRules.consolationPrizeName}" แทนค่ะ
+                                </p>
+                            </div>
+                        </div>
+                        <span class="bg-amber-400 text-amber-950 font-black px-3.5 py-1.5 rounded-xl shadow-xs shrink-0 inline-flex items-center gap-1.5">
+                            <i class="fa-solid fa-cookie-bite"></i> มอบขนมแทน
+                        </span>
+                    </div>
+                `;
+            }
+        };
+
         // Rules Settings Modal Handlers
         window.openRulesSettingsModal = function() {
             const radios = document.getElementsByName('rule_grand_prize');
@@ -2306,6 +2425,10 @@ function doPost(e) {<br>
             const { totalWeight, activeCount } = calculatePrizeProbabilities();
             if (countEl) countEl.textContent = wheelPrizes.length;
             if (totalWeightEl) totalWeightEl.textContent = totalWeight;
+            const badgeCount = document.getElementById('wheel-prize-count-badge');
+            const badgeActive = document.getElementById('wheel-active-count-badge');
+            if (badgeCount) badgeCount.textContent = wheelPrizes.length + ' รายการ';
+            if (badgeActive) badgeActive.textContent = activeCount + ' รายการ';
 
             // Find rarest active prize
             const active = getActiveWheelPrizes();
@@ -4622,77 +4745,43 @@ function doPost(e) {<br>
                 </div>
             `;
 
-            // LUCKY WHEEL SHOWCASE (Rank 1 Champion)
+            // PHYSICAL LUCKY DRAW BOX SHOWCASE (Rank 1 Champion)
             if (!isDuplicate) {
-                const wonInfo = activeHeatWonPrize && activeHeatWonPrize.empId === winner1.empId ? activeHeatWonPrize.prize : null;
                 html += `
                     <div class="bg-gradient-to-br from-amber-500/25 via-yellow-500/20 to-teal-500/25 border-4 border-amber-300 rounded-3xl p-5 sm:p-7 shadow-2xl flex flex-col items-center justify-center text-center backdrop-blur-md relative overflow-hidden">
-                        <div class="flex items-center gap-2 mb-2">
-                            <span class="text-3xl animate-bounce">🎡</span>
-                            <h3 class="text-xl sm:text-2xl font-black bg-gradient-to-r from-amber-200 via-yellow-100 to-amber-300 bg-clip-text text-transparent">
-                                วงล้อหมุนลุ้นรางวัลใหญ่ (Grand Prize Wheel)
+                        <div class="flex items-center gap-2.5 mb-2">
+                            <span class="text-3xl sm:text-4xl animate-bounce">📦</span>
+                            <h3 class="text-xl sm:text-3xl font-black bg-gradient-to-r from-amber-200 via-yellow-100 to-amber-300 bg-clip-text text-transparent">
+                                สิทธิ์จับฉลากรางวัลใหญ่ในกล่อง (Lucky Draw Box)
                             </h3>
-                            <span class="text-3xl animate-bounce">👑</span>
+                            <span class="text-3xl sm:text-4xl animate-bounce">👑</span>
                         </div>
                         <p class="text-xs sm:text-sm text-amber-200 mb-4 max-w-xl">
-                            ผู้ชนะเลิศอันดับ 1 (คุณ ${winner1.name}) ได้รับสิทธิ์หมุนวงล้อลุ้นรางวัลใหญ่! <br class="hidden sm:inline">
-                            <span class="text-yellow-300 font-bold">📱 ผู้ชนะสามารถแตะปุ่มหมุนสดจากจอมือถือ</span> หรือ <span class="text-teal-200 font-bold">แอดมินคลิกปุ่มด้านล่างเพื่อหมุนแทนได้ค่ะ</span>
+                            ผู้ชนะเลิศอันดับ 1 (คุณ <b class="text-yellow-300">${winner1.name}</b>) ได้รับสิทธิ์จับฉลากลุ้นรางวัลใหญ่ประจำงาน 1 สิทธิ์! <br>
+                            <span class="text-amber-100 font-bold">👉 เชิญผู้ชนะก้าวมาล้วงจับสลากกระดาษที่กล่องบนโต๊ะบูธได้เลยค่ะ ✨</span>
                         </p>
 
-                        <!-- Canvas Wheel Display -->
-                        <div class="relative flex items-center justify-center my-3">
-                            <!-- Pointer Needle -->
-                            <div class="absolute -top-3.5 z-20 flex flex-col items-center pointer-events-none drop-shadow-[0_4px_10px_rgba(0,0,0,0.6)]">
-                                <div class="w-8 h-10 bg-gradient-to-b from-rose-500 to-red-600 rounded-t-md border-2 border-white shadow-xl flex items-center justify-center" style="clip-path: polygon(50% 100%, 0 0, 100% 0);">
-                                    <div class="w-2.5 h-2.5 bg-amber-300 rounded-full mb-3"></div>
-                                </div>
+                        <!-- Big Golden Ticket Card -->
+                        <div class="my-2 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 text-slate-900 px-6 sm:px-8 py-4 rounded-3xl border-4 border-white shadow-xl flex items-center justify-center gap-3.5 max-w-md w-full">
+                            <span class="text-3xl sm:text-4xl">🎟️</span>
+                            <div class="text-left">
+                                <span class="bg-amber-950/20 text-amber-950 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">ตั๋วสิทธิ์จับฉลาก</span>
+                                <h4 class="text-base sm:text-xl font-black">สิทธิ์จับฉลากรางวัลใหญ่ 1 ครั้ง</h4>
+                                <p class="text-[11px] text-slate-800 font-bold">มอบให้: คุณ ${winner1.name} (${winner1.dept}) • รหัส: ${winner1.empId}</p>
                             </div>
+                        </div>
 
-                            <!-- Canvas Circle -->
-                            <div class="p-2 sm:p-3 rounded-full bg-gradient-to-tr from-amber-500 via-yellow-300 to-amber-600 shadow-[0_12px_40px_rgba(245,158,11,0.6)] border-4 border-amber-200">
-                                <canvas id="stage-wheel-canvas" width="380" height="380" class="rounded-full shadow-inner bg-slate-900 max-w-[280px] sm:max-w-[360px] h-auto"></canvas>
-                            </div>
-
-                            <!-- Center Spin Hub Button -->
-                            <button id="btn-stage-wheel-center" onclick="adminTriggerWheelSpin()" 
-                                class="absolute z-10 w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-b from-amber-300 via-yellow-400 to-amber-500 border-4 border-white text-slate-900 font-black text-xs sm:text-sm shadow-[0_6px_20px_rgba(0,0,0,0.4)] flex flex-col items-center justify-center cursor-pointer transform hover:scale-105 active:scale-95 transition ${wonInfo ? 'hidden' : ''}">
-                                <i class="fa-solid fa-arrows-spin text-xl sm:text-2xl text-amber-950 mb-0.5"></i>
-                                <span class="font-black text-amber-950">หมุนเลย!</span>
+                        <!-- Admin Prize Record Action Button -->
+                        <div class="mt-4 flex flex-col sm:flex-row items-center gap-3">
+                            <button onclick="openPrizeModal('${winner1.empId}', 1)" 
+                                class="btn-clay-yellow px-8 py-3.5 text-base sm:text-lg font-black shadow-xl flex items-center gap-2 cursor-pointer animate-bounce">
+                                <i class="fa-solid fa-gift text-xl"></i>
+                                <span>🎁 แอดมินกดบันทึกของรางวัลที่จับได้ (ลงระบบ & ชีต)</span>
                             </button>
                         </div>
-
-                        <!-- Active Wheel Prizes Showcase Badges Bar -->
-                        <div class="mt-2 mb-3 max-w-2xl mx-auto w-full">
-                            <p class="text-xs text-amber-200 font-extrabold uppercase tracking-wider mb-2 flex items-center justify-center gap-1.5">
-                                <i class="fa-solid fa-gifts text-amber-400"></i>
-                                <span>ของรางวัลใหญ่ทั้งหมดในวงล้อรอบนี้ (ลุ้นได้ตามน้ำหนักความหายาก):</span>
-                            </p>
-                            <div class="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
-                                ${getActivePrizesBadgesHtml(true)}
-                            </div>
-                        </div>
-
-                        <!-- Spin Status and Trigger Bar -->
-                        <div id="stage-wheel-controls-area" class="mt-3 flex flex-col sm:flex-row items-center gap-3 ${wonInfo ? 'hidden' : ''}">
-                            <button id="btn-spin-wheel-stage" onclick="adminTriggerWheelSpin()" 
-                                class="btn-clay-yellow px-8 py-3.5 text-base sm:text-lg font-black shadow-xl flex items-center gap-2 cursor-pointer animate-pulse">
-                                <i class="fa-solid fa-dharmachakra text-xl"></i>
-                                <span>🎡 กดหมุนวงล้อสด (แอดมินหมุนให้)</span>
-                            </button>
-                            <span class="text-xs text-amber-200 font-bold bg-amber-950/60 px-3.5 py-2 rounded-xl border border-amber-400/30 flex items-center gap-1.5">
-                                <i class="fa-solid fa-mobile-screen text-amber-400 animate-bounce"></i> หรือรอผู้ชนะแตะหมุนสดจากหน้าจอมือถือ
-                            </span>
-                        </div>
-
-                        <!-- Won Announcement Card -->
-                        <div id="stage-wheel-won-card" class="${wonInfo ? '' : 'hidden'} mt-5 w-full max-w-lg bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 text-slate-900 p-5 rounded-3xl border-4 border-white shadow-2xl animate-bounce-slow">
-                            <span class="text-3xl">🎉👑✨</span>
-                            <h4 class="text-lg sm:text-2xl font-black mt-1">ยินดีด้วยค่ะ! คุณ ${winner1.name} ได้รับ:</h4>
-                            <div id="stage-wheel-won-prize-text" class="text-2xl sm:text-3xl font-black text-teal-800 my-2 bg-white/90 py-2.5 px-4 rounded-2xl shadow-inner border border-amber-200">
-                                ${wonInfo ? (wonInfo.icon || '🎁') + ' ' + wonInfo.name : ''}
-                            </div>
-                            <p class="text-xs font-bold text-slate-700">บันทึกรางวัลลงในประวัติและชีตเรียบร้อยแล้วค่ะ 🎁</p>
-                        </div>
+                        <p class="text-[11px] text-teal-200 mt-2 font-bold">
+                            * เมื่อผู้ชนะจับฉลากกระดาษแล้ว แอดมินกดปุ่มนี้เพื่อเลือกระบุของรางวัลที่พนักงานได้รับ ข้อมูลจะบันทึกพร้อมตัดสิทธิ์การจับฉลากซ้ำทันทีค่ะ
+                        </p>
                     </div>
                 `;
             }
@@ -4741,12 +4830,6 @@ function doPost(e) {<br>
             grid.innerHTML = html;
             const othersContainer = document.getElementById('stage-heat-others-list');
             if (othersContainer) othersContainer.classList.add('hidden');
-
-            if (!isDuplicate) {
-                setTimeout(() => {
-                    drawLuckyWheel('stage-wheel-canvas', currentWheelAngle);
-                }, 60);
-            }
         }
 
         // =====================================================================
@@ -4929,62 +5012,28 @@ function doPost(e) {<br>
                     const todayStr = new Date().toLocaleDateString('th-TH');
                     const eligibility = checkGrandPrizeEligibility(currentPlayer.id, todayStr);
                     if (eligibility.eligible) {
-                        const wonInfo = activeHeatWonPrize && activeHeatWonPrize.empId === currentPlayer.id ? activeHeatWonPrize.prize : null;
-                        prizeBox.className = "bg-gradient-to-r from-amber-100 via-yellow-100 to-amber-200 border-2 border-amber-400 rounded-3xl p-4 sm:p-5 my-3 text-center shadow-lg";
+                        prizeBox.className = "bg-gradient-to-r from-amber-100 via-yellow-100 to-amber-200 border-3 border-amber-400 rounded-3xl p-5 my-3 text-center shadow-lg";
                         prizeBox.innerHTML = `
-                            <div class="text-3xl mb-1 animate-bounce">👑 🎡</div>
-                            <p class="text-xs font-black text-amber-900 uppercase tracking-wider">🎉 ยินดีด้วยค่ะ! คุณชนะเลิศอันดับ 1 ของรอบนี้</p>
-                            <p class="text-base sm:text-xl font-black text-amber-950 mt-1">ได้รับสิทธิ์หมุนวงล้อลุ้นรางวัลใหญ่! 🎡</p>
+                            <div class="text-4xl mb-2 animate-bounce">👑 🎟️</div>
+                            <span class="bg-amber-400 text-amber-950 text-xs font-black px-3.5 py-1 rounded-full uppercase tracking-wider shadow-xs">
+                                บัตรสิทธิ์จับฉลากรางวัลใหญ่
+                            </span>
+                            <h3 class="text-xl sm:text-2xl font-black text-amber-950 mt-2 leading-tight">
+                                🎉 ยินดีด้วยค่ะ! คุณชนะเลิศอันดับ 1
+                            </h3>
+                            <p class="text-sm font-bold text-amber-900 mt-1">
+                                ได้รับสิทธิ์ <b>"จับฉลากรางวัลใหญ่ในกล่อง 1 ครั้ง"</b> 🎁
+                            </p>
                             
-                            <!-- Mobile Lucky Wheel Canvas Display -->
-                            <div class="relative flex items-center justify-center my-3">
-                                <!-- Top Needle Pointer -->
-                                <div class="absolute -top-3 z-20 flex flex-col items-center pointer-events-none drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)]">
-                                    <div class="w-7 h-9 bg-gradient-to-b from-rose-500 to-red-600 rounded-t-md border-2 border-white shadow-lg flex items-center justify-center" style="clip-path: polygon(50% 100%, 0 0, 100% 0);">
-                                        <div class="w-2 h-2 bg-amber-300 rounded-full mb-2.5"></div>
-                                    </div>
-                                </div>
-                                <!-- Canvas Wheel -->
-                                <div class="p-2 rounded-full bg-gradient-to-tr from-amber-500 via-yellow-300 to-amber-600 shadow-[0_8px_25px_rgba(245,158,11,0.5)] border-3 border-amber-200">
-                                    <canvas id="mobile-wheel-canvas" width="280" height="280" class="rounded-full bg-slate-900 w-[240px] h-[240px] sm:w-[280px] sm:h-[280px]"></canvas>
-                                </div>
+                            <div class="my-3.5 p-3.5 bg-white/95 rounded-2xl border-2 border-amber-300 text-slate-800 shadow-md">
+                                <p class="text-xs sm:text-sm font-black text-teal-800">
+                                    👉 แสดงหน้าจอนี้แก่เจ้าหน้าที่แอดมินประจำบูธ<br>เพื่อล้วงจับสลากในกล่องลุ้นรางวัลใหญ่ได้เลยค่ะ! ✨
+                                </p>
                             </div>
-
-                            <!-- Available Prizes Showcase Badges -->
-                            <div class="my-2.5">
-                                <p class="text-[11px] text-amber-900 font-extrabold mb-1">🎁 ของรางวัลใหญ่ทั้งหมดในวงล้อ:</p>
-                                <div class="flex flex-wrap items-center justify-center gap-1.5 max-w-sm mx-auto">
-                                    ${getActivePrizesBadgesHtml(false)}
-                                </div>
-                            </div>
-
-                            <div id="mobile-wheel-action-area" class="${wonInfo ? 'hidden' : ''} mt-3">
-                                <button id="btn-player-spin-wheel" onclick="playerTriggerWheelSpin()" 
-                                    class="btn-clay-yellow w-full py-3.5 px-4 font-black text-base sm:text-lg shadow-xl flex items-center justify-center gap-2 cursor-pointer animate-bounce">
-                                    <i class="fa-solid fa-arrows-spin text-xl"></i>
-                                    <span>🎡 แตะเพื่อหมุนวงล้อสด!</span>
-                                </button>
-                                <p class="text-[11px] text-amber-800 mt-2 font-bold">แตะปุ่มนี้เพื่อหมุนวงล้อสดบนจอใหญ่และบนมือถือของคุณพร้อมกันค่ะ!</p>
-                            </div>
-
-                            <div id="mobile-wheel-spinning-indicator" class="hidden mt-3 py-3 px-4 bg-amber-200/90 rounded-2xl border border-amber-400 text-amber-950 font-black text-sm flex items-center justify-center gap-2 animate-pulse">
-                                <i class="fa-solid fa-spinner fa-spin text-lg text-amber-700"></i>
-                                <span>วงล้อกำลังหมุน... ร่วมลุ้นรางวัลกันค่ะ! 🎡✨</span>
-                            </div>
-
-                            <div id="mobile-wheel-won-box" class="${wonInfo ? '' : 'hidden'} mt-3 bg-white p-4 rounded-2xl border-2 border-amber-400 text-slate-800 shadow-md">
-                                <span class="text-2xl animate-bounce">🎉👑✨</span>
-                                <p class="text-xs font-bold text-amber-800 uppercase tracking-wider mt-1">รางวัลใหญ่ที่คุณได้รับคือ:</p>
-                                <h4 id="mobile-won-prize-name" class="text-xl sm:text-2xl font-black text-teal-700 mt-1">
-                                    ${wonInfo ? (wonInfo.icon || '🎁') + ' ' + wonInfo.name : ''}
-                                </h4>
-                                <p class="text-xs text-slate-500 mt-1 font-bold">ติดต่อรับของรางวัลกับเจ้าหน้าที่แอดมินประจำบูธได้เลยค่ะ!</p>
-                            </div>
+                            <p class="text-[11px] text-amber-900 font-bold">
+                                (เจ้าหน้าที่แอดมินจะบันทึกของรางวัลที่คุณจับได้ลงระบบให้ทันทีค่ะ)
+                            </p>
                         `;
-                        // Initial draw of the mobile canvas
-                        setTimeout(() => {
-                            drawLuckyWheel('mobile-wheel-canvas', currentWheelAngle);
-                        }, 80);
                     } else {
                         prizeBox.className = "bg-gradient-to-r from-amber-50 via-teal-50 to-emerald-50 border-2 border-teal-300 rounded-3xl p-4 my-3 text-center shadow-md";
                         prizeBox.innerHTML = `
@@ -5409,7 +5458,67 @@ function doPost(e) {<br>
             const existing = prizesAwarded[empId];
             const defaultForRank = rank === 1 ? gameRules.rank1PrizeName : gameRules.consolationPrizeName;
             document.getElementById('prize-name-input').value = existing ? existing.prizeName : defaultForRank;
+            renderModalPrizeChips(document.getElementById('prize-name-input').value);
             document.getElementById('prize-modal').classList.remove('hidden');
+        };
+
+        window.renderModalPrizeChips = function(filterQuery = '') {
+            const container = document.getElementById('modal-prize-chips-container');
+            if (!container) return;
+            const q = (filterQuery || '').trim().toLowerCase();
+
+            // All prizes in system + consolation prize + grand ticket
+            let list = [
+                { id: 'grand_ticket', name: gameRules.rank1PrizeName, icon: '👑', stock: -1 },
+                ...wheelPrizes,
+                { id: 'conso', name: gameRules.consolationPrizeName, icon: '🍬', stock: -1 }
+            ];
+
+            if (q) {
+                list = list.filter(p => p.name.toLowerCase().includes(q));
+            }
+
+            if (list.length === 0) {
+                container.innerHTML = `
+                    <div class="py-2.5 px-3 text-xs text-amber-900 bg-amber-50 rounded-xl border border-amber-200 w-full text-center">
+                        <span>ไม่พบชื่อในรายการที่ตรงกับ "<b>${filterQuery}</b>"</span><br>
+                        <span class="text-[11px] text-slate-500 mt-0.5 inline-block">คุณสามารถกดปุ่ม "ยืนยันมอบรางวัล" เพื่อบันทึกชื่อรางวัลนี้ได้ทันทีค่ะ</span>
+                    </div>
+                `;
+                return;
+            }
+
+            const currentVal = document.getElementById('prize-name-input')?.value || '';
+
+            container.innerHTML = list.map(p => {
+                const isSelected = currentVal.trim() === p.name.trim();
+                const stockNum = Number(p.stock);
+                const hasStock = stockNum > 0 || stockNum === -1 || p.stock === undefined || p.stock === '';
+                const stockStr = (stockNum > 0) ? ` (เหลือ ${stockNum})` : (stockNum === 0 ? ' (หมด)' : '');
+
+                return `
+                    <button type="button" onclick="selectPrizeInModal('${p.name.replace(/'/g, "\\'")}')" 
+                        class="text-xs font-bold px-3 py-1.5 rounded-xl border transition shadow-2xs flex items-center gap-1.5 cursor-pointer ${
+                            isSelected 
+                                ? 'bg-amber-400 text-amber-950 border-amber-500 ring-2 ring-amber-300 font-black' 
+                                : (!hasStock ? 'bg-slate-100 text-slate-400 border-slate-200 opacity-60' : 'bg-white hover:bg-amber-50 text-slate-800 border-amber-200')
+                        }">
+                        <span>${p.icon || '🎁'}</span>
+                        <span>${p.name}</span>
+                        <span class="text-[10px] text-slate-500 font-normal">${stockStr}</span>
+                    </button>
+                `;
+            }).join('');
+        };
+
+        window.filterModalPrizeList = function(query) {
+            renderModalPrizeChips(query);
+        };
+
+        window.selectPrizeInModal = function(prizeName) {
+            const input = document.getElementById('prize-name-input');
+            if (input) input.value = prizeName;
+            renderModalPrizeChips(prizeName);
         };
 
         window.closePrizeModal = function() {
@@ -5432,6 +5541,24 @@ function doPost(e) {<br>
             prizesAwarded[selectedWinnerForPrize.empId] = prizeData;
             localStorage.setItem('health_sprint_prizes', JSON.stringify(prizesAwarded));
 
+            // Decrement stock if matching prize in wheelPrizes list
+            const matchedPrize = wheelPrizes.find(p => p.name.trim().toLowerCase() === prizeName.toLowerCase());
+            if (matchedPrize && Number(matchedPrize.stock) > 0) {
+                matchedPrize.stock = Number(matchedPrize.stock) - 1;
+                try {
+                    localStorage.setItem('health_sprint_wheel_prizes', JSON.stringify(wheelPrizes));
+                } catch(e) {}
+            }
+
+            // Update prize in playLogs for this employee
+            const lastWinnerLog = playLogs.slice().reverse().find(l => l.empId === selectedWinnerForPrize.empId);
+            if (lastWinnerLog) {
+                lastWinnerLog.prize = prizeName;
+                try {
+                    localStorage.setItem('health_sprint_play_logs', JSON.stringify(playLogs));
+                } catch(e) {}
+            }
+
             broadcastSyncMessage({
                 type: 'PRIZE_AWARD',
                 empId: selectedWinnerForPrize.empId,
@@ -5447,7 +5574,7 @@ function doPost(e) {<br>
             closePrizeModal();
             renderAdminDashboard();
             renderAllLiveViews();
-            showToast("บันทึกการมอบรางวัลเรียบร้อยแล้ว!", "success");
+            showToast(`🎉 บันทึกการมอบรางวัล "${prizeName}" เรียบร้อยแล้วค่ะ!`, "success");
         };
 
         // Employee DB Modal Functions
