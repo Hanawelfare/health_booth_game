@@ -1136,10 +1136,15 @@
                 </button>
             </div>
             
-            <div class="bg-amber-50 border-2 border-amber-200 rounded-2xl p-3.5 mb-4 shadow-xs">
+            <div class="bg-amber-50 border-2 border-amber-200 rounded-2xl p-3.5 mb-3 shadow-xs">
                 <p class="text-xs text-amber-700 font-extrabold" id="modal-winner-rank">อันดับที่ 1</p>
                 <p class="text-lg font-black text-slate-800" id="modal-winner-name">ชื่อพนักงาน</p>
                 <p class="text-xs text-slate-500 font-medium" id="modal-winner-dept">แผนก • คะแนน: 0</p>
+            </div>
+
+            <!-- Warning Alert if employee already received grand prize -->
+            <div id="modal-winner-warning" class="hidden mb-3 p-3.5 bg-amber-100/90 border-2 border-amber-400 rounded-2xl text-xs text-amber-950 shadow-xs">
+                <!-- Injected via JS -->
             </div>
 
             <div class="space-y-3">
@@ -1167,17 +1172,22 @@
                         <p class="text-[11px] font-extrabold text-slate-600">
                             แตะเพื่อเลือกของรางวัลที่พนักงานจับฉลากได้:
                         </p>
-                        <span class="text-[10px] text-slate-400 font-bold">* พิมพ์ค้นหาได้ หรือคลิกเลือกได้ทันที</span>
+                        <span class="text-[10px] text-teal-700 font-bold">* แตะปุ่มเพื่อเลือก / แตะซ้ำเพื่อยืนยัน</span>
                     </div>
                     <div id="modal-prize-chips-container" class="flex flex-wrap gap-1.5 max-h-44 overflow-y-auto p-2 bg-slate-50/80 rounded-2xl border border-slate-200 shadow-inner">
                         <!-- Populated dynamically via JS -->
                     </div>
+                    <p class="text-[10px] text-slate-400 mt-1">
+                        💡 เมื่อแตะเลือกรางวัลแล้ว ให้กดปุ่มสีเขียว <b>"ยืนยันมอบรางวัล"</b> ด้านล่าง (หรือแตะปุ่มรางวัลที่เลือกซ้ำอีกครั้ง) เพื่อบันทึกค่ะ
+                    </p>
                 </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-3 mt-6">
+            <div class="grid grid-cols-2 gap-3 mt-5 pt-3 border-t border-slate-100">
                 <button onclick="closePrizeModal()" class="btn-clay-white py-3 font-bold text-sm cursor-pointer">ยกเลิก</button>
-                <button onclick="savePrizeAssignment()" class="btn-clay-teal py-3 font-black text-sm cursor-pointer shadow-md">ยืนยันมอบรางวัล</button>
+                <button id="modal-confirm-prize-btn" onclick="savePrizeAssignment()" class="btn-clay-teal py-3 font-black text-sm cursor-pointer shadow-md flex items-center justify-center gap-1.5 transition">
+                    <i class="fa-solid fa-check"></i> ยืนยันมอบรางวัล
+                </button>
             </div>
         </div>
     </div>
@@ -1715,43 +1725,80 @@ function doPost(e) {<br>
         function checkGrandPrizeEligibility(empId, targetDateStr) {
             if (!empId) return { eligible: true };
             const cleanId = String(empId).trim().replace(/^'/, '');
+            const strippedKey = cleanId.replace(/^0+/, '') || cleanId;
             const targetDate = targetDateStr || new Date().toLocaleDateString('th-TH');
 
             if (gameRules.grandPrizeRule === 'unlimited') {
                 return { eligible: true };
             }
 
+            // 1. Check direct prize record in prizesAwarded dictionary
+            if (typeof prizesAwarded !== 'undefined' && prizesAwarded) {
+                const award = prizesAwarded[cleanId] || prizesAwarded[strippedKey];
+                if (award && award.prizeName) {
+                    const awardDate = award.wonDate || targetDate;
+                    if (gameRules.grandPrizeRule === 'event_once' || (gameRules.grandPrizeRule === 'daily_once' && awardDate === targetDate)) {
+                        return {
+                            eligible: false,
+                            rule: gameRules.grandPrizeRule,
+                            reason: `ได้รับรางวัลใหญ่ "${award.prizeName}" ไปแล้ว (${awardDate}${award.awardedAt ? ' เวลา ' + award.awardedAt : ''})`,
+                            wonPrizeName: award.prizeName,
+                            wonDate: awardDate,
+                            awardedAt: award.awardedAt
+                        };
+                    }
+                }
+            }
+
+            // 2. Check playLogs for any prior grand prize wins
             const allPriorGrandWins = playLogs.filter(l => {
                 const logEmp = String(l.empId || '').trim().replace(/^'/, '');
-                if (logEmp !== cleanId) return false;
-                const isRank1 = l.heatRank === 1 && !l.isDuplicateWin;
-                const prizeStr = String(l.prize || '');
-                const hasGrandPrize = prizeStr.includes('จับฉลาก') || prizeStr.includes('รางวัลใหญ่');
-                return isRank1 || hasGrandPrize;
+                const logStripped = logEmp.replace(/^0+/, '') || logEmp;
+                if (logEmp !== cleanId && logStripped !== strippedKey) return false;
+
+                const prizeStr = String(l.prize || '').trim();
+                const isConsolation = (prizeStr === gameRules.consolationPrizeName) || prizeStr.includes('ขนม');
+                const isRank1 = Number(l.heatRank) === 1;
+
+                // Grand win if:
+                // - Won Rank 1 and not auto-swapped to snack duplicate
+                // - OR prize is explicitly anything other than consolation snack
+                // - OR contains grand prize keywords
+                const hasWonGrand = (isRank1 && !l.isDuplicateWin && !isConsolation) ||
+                                   (prizeStr && !isConsolation && prizeStr !== '-' && !prizeStr.includes('ขนม')) ||
+                                   prizeStr.includes('จับฉลาก') ||
+                                   prizeStr.includes('รางวัลใหญ่');
+                return hasWonGrand;
             });
 
             if (gameRules.grandPrizeRule === 'daily_once') {
                 const wonToday = allPriorGrandWins.filter(l => extractDateFromLog(l) === targetDate);
                 if (wonToday.length > 0) {
-                    const timeInfo = wonToday[0].timestamp || (wonToday[0].dateTime ? wonToday[0].dateTime.split(' ')[1] : '');
+                    const firstWin = wonToday[0];
+                    const prizeName = firstWin.prize || gameRules.rank1PrizeName;
+                    const timeInfo = firstWin.timestamp || (firstWin.dateTime ? firstWin.dateTime.split(' ')[1] : '');
                     return {
                         eligible: false,
                         rule: 'daily_once',
-                        reason: `ได้รับสิทธิ์จับฉลากรางวัลใหญ่ไปแล้วในวันนี้ (${targetDate}${timeInfo ? ' เวลา ' + timeInfo : ''})`,
-                        previousRound: wonToday[0].roundId,
+                        reason: `ได้รับรางวัล "${prizeName}" ไปแล้วในวันนี้ (${targetDate}${timeInfo ? ' เวลา ' + timeInfo : ''})`,
+                        wonPrizeName: prizeName,
+                        previousRound: firstWin.roundId,
                         wonDate: targetDate,
                         wonCount: wonToday.length
                     };
                 }
             } else if (gameRules.grandPrizeRule === 'event_once') {
                 if (allPriorGrandWins.length > 0) {
-                    const prevDate = extractDateFromLog(allPriorGrandWins[0]);
-                    const timeInfo = allPriorGrandWins[0].timestamp || (allPriorGrandWins[0].dateTime ? allPriorGrandWins[0].dateTime.split(' ')[1] : '');
+                    const firstWin = allPriorGrandWins[0];
+                    const prizeName = firstWin.prize || gameRules.rank1PrizeName;
+                    const prevDate = extractDateFromLog(firstWin);
+                    const timeInfo = firstWin.timestamp || (firstWin.dateTime ? firstWin.dateTime.split(' ')[1] : '');
                     return {
                         eligible: false,
                         rule: 'event_once',
-                        reason: `ได้รับสิทธิ์จับฉลากรางวัลใหญ่ไปแล้วเมื่อวันที่ ${prevDate}${timeInfo ? ' เวลา ' + timeInfo : ''}`,
-                        previousRound: allPriorGrandWins[0].roundId,
+                        reason: `ได้รับรางวัล "${prizeName}" ไปแล้วเมื่อวันที่ ${prevDate}${timeInfo ? ' เวลา ' + timeInfo : ''}`,
+                        wonPrizeName: prizeName,
+                        previousRound: firstWin.roundId,
                         wonDate: prevDate,
                         wonCount: allPriorGrandWins.length
                     };
@@ -1974,10 +2021,15 @@ function doPost(e) {<br>
                 return;
             }
             const cleanId = String(rawId).trim();
-            const emp = employeeDB[cleanId] || { name: 'พนักงานรหัส ' + cleanId, dept: '-' };
+            const strippedKey = cleanId.replace(/^0+/, '') || cleanId;
+            const emp = employeeDB[cleanId] || employeeDB[strippedKey] || { name: 'พนักงานรหัส ' + cleanId, dept: '-' };
             const todayStr = new Date().toLocaleDateString('th-TH');
 
-            const allPlays = playLogs.filter(l => String(l.empId || '').trim().replace(/^'/, '') === cleanId);
+            const allPlays = playLogs.filter(l => {
+                const logEmp = String(l.empId || '').trim().replace(/^'/, '');
+                const logStripped = logEmp.replace(/^0+/, '') || logEmp;
+                return logEmp === cleanId || logStripped === strippedKey;
+            });
             const todayPlays = allPlays.filter(l => extractDateFromLog(l) === todayStr);
             const eligibility = checkGrandPrizeEligibility(cleanId, todayStr);
 
@@ -5605,6 +5657,29 @@ function doPost(e) {<br>
             document.getElementById('modal-winner-name').textContent = `${winner.name} (${winner.empId})`;
             document.getElementById('modal-winner-dept').textContent = `${winner.dept} • คะแนน: ${winner.bestScore || 0}`;
             
+            // Display Warning if already received grand prize
+            const warningEl = document.getElementById('modal-winner-warning');
+            const todayStr = new Date().toLocaleDateString('th-TH');
+            const eligibility = checkGrandPrizeEligibility(empId, todayStr);
+            if (warningEl) {
+                if (!eligibility.eligible) {
+                    warningEl.classList.remove('hidden');
+                    warningEl.innerHTML = `
+                        <div class="flex items-start gap-2.5">
+                            <span class="text-2xl shrink-0">⚠️</span>
+                            <div>
+                                <p class="font-black text-amber-950 text-xs sm:text-sm">แจ้งเตือน: พนักงานท่านนี้เคยได้รับรางวัลใหญ่แล้ว!</p>
+                                <p class="text-[11px] text-amber-900 font-bold mt-0.5">${eligibility.reason}</p>
+                                <p class="text-[10px] text-slate-600 mt-1">ตามกติกาจำกัด 1 สิทธิ์/วัน หากต้องการมอบเป็นกรณีพิเศษให้เลือกรางวัลแล้วกดยืนยัน หรือเปลี่ยนเป็น "${gameRules.consolationPrizeName}" ค่ะ</p>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    warningEl.classList.add('hidden');
+                    warningEl.innerHTML = '';
+                }
+            }
+
             const existing = prizesAwarded[empId];
             const defaultForRank = rank === 1 ? gameRules.rank1PrizeName : gameRules.consolationPrizeName;
             document.getElementById('prize-name-input').value = existing ? existing.prizeName : defaultForRank;
@@ -5644,6 +5719,29 @@ function doPost(e) {<br>
             if (nameEl) nameEl.textContent = `${emp.name} (${targetId})`;
             const deptEl = document.getElementById('modal-winner-dept');
             if (deptEl) deptEl.textContent = `${emp.dept} • กิจกรรมแข่งขัน / หน้าบูธ`;
+
+            // Display Warning if already received grand prize
+            const warningEl = document.getElementById('modal-winner-warning');
+            const todayStr = new Date().toLocaleDateString('th-TH');
+            const eligibility = checkGrandPrizeEligibility(targetId, todayStr);
+            if (warningEl) {
+                if (!eligibility.eligible) {
+                    warningEl.classList.remove('hidden');
+                    warningEl.innerHTML = `
+                        <div class="flex items-start gap-2.5">
+                            <span class="text-2xl shrink-0">⚠️</span>
+                            <div>
+                                <p class="font-black text-amber-950 text-xs sm:text-sm">แจ้งเตือน: พนักงานท่านนี้เคยได้รับรางวัลใหญ่แล้ว!</p>
+                                <p class="text-[11px] text-amber-900 font-bold mt-0.5">${eligibility.reason}</p>
+                                <p class="text-[10px] text-slate-600 mt-1">ตามกติกาจำกัด 1 สิทธิ์/วัน หากต้องการมอบเป็นกรณีพิเศษให้เลือกรางวัลแล้วกดยืนยัน หรือเปลี่ยนเป็น "${gameRules.consolationPrizeName}" ค่ะ</p>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    warningEl.classList.add('hidden');
+                    warningEl.innerHTML = '';
+                }
+            }
 
             const existing = prizesAwarded[targetId];
             const defaultPrize = existing ? existing.prizeName : gameRules.rank1PrizeName;
@@ -5709,8 +5807,24 @@ function doPost(e) {<br>
 
         window.selectPrizeInModal = function(prizeName) {
             const input = document.getElementById('prize-name-input');
+            const currentVal = input ? input.value.trim() : '';
+
+            // If user taps the chip that is already selected -> Save and confirm immediately!
+            if (currentVal.toLowerCase() === prizeName.trim().toLowerCase()) {
+                savePrizeAssignment();
+                return;
+            }
+
             if (input) input.value = prizeName;
             renderModalPrizeChips(prizeName);
+
+            // Animate and highlight the green confirm button so the user knows what to click next
+            const confirmBtn = document.getElementById('modal-confirm-prize-btn');
+            if (confirmBtn) {
+                confirmBtn.classList.add('ring-4', 'ring-teal-400', 'animate-pulse');
+                setTimeout(() => confirmBtn.classList.remove('animate-pulse'), 1500);
+            }
+            showToast(`เลือก "${prizeName}" แล้วค่ะ 👉 กดปุ่มเขียว "ยืนยันมอบรางวัล" หรือแตะซ้ำอีกครั้งเพื่อบันทึกทันที`, "info");
         };
 
         window.closePrizeModal = function() {
