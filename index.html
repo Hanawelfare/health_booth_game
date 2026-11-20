@@ -555,7 +555,7 @@
                     <!-- Search Pill Bar (Exact style from user reference image!) -->
                     <div class="clay-pill-bar flex items-center bg-white rounded-full p-1.5 pl-4 shadow-lg border-2 border-amber-100">
                         <span class="text-xl mr-2 animate-bounce">✨</span>
-                        <input type="tel" id="emp-id-input" placeholder="กรอกรหัสพนักงานเฉพาะตัวเลข เช่น 084843..." 
+                        <input type="tel" id="emp-id-input" placeholder="กรอกรหัสพนักงานเฉพาะตัวเลข เช่น 012345..." 
                             oninput="this.value = this.value.replace(/\D/g, ''); lookupEmployee(this.value);"
                             onkeypress="return (event.charCode >= 48 && event.charCode <= 57) || event.charCode === 13;"
                             onpaste="setTimeout(() => { this.value = this.value.replace(/\D/g, ''); lookupEmployee(this.value); }, 0)"
@@ -944,8 +944,11 @@
                     <i class="fa-solid fa-person-running"></i>
                 </div>
                 <div>
-                    <p class="text-xs font-extrabold text-slate-500">จำนวนรอบเล่นรวม</p>
-                    <p id="stat-total-rounds" class="text-2xl sm:text-3xl font-black text-slate-800">0</p>
+                    <p class="text-xs font-extrabold text-slate-500">ยอดเล่นรวม (คน-ครั้ง)</p>
+                    <div class="flex items-baseline gap-2">
+                        <p id="stat-total-rounds" class="text-2xl sm:text-3xl font-black text-slate-800">0</p>
+                        <span id="stat-total-heats-badge" class="text-xs font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">(0 รอบแข่ง)</span>
+                    </div>
                 </div>
             </div>
 
@@ -970,7 +973,7 @@
             </div>
         </div>
 
-        <!-- INSTANT EMPLOYEE PRIVILEGE CHECKER (ตรวจสอบสิทธิ์จับฉลากรางวัลใหญ่ด่วน) -->
+        <!-- INSTANT EMPLOYEE PRIVILEGE CHECKER & EXTERNAL PRIZE AWARD -->
         <div class="clay-card p-4 sm:p-5 border-4 border-white shadow-xl bg-gradient-to-r from-amber-50 via-white to-teal-50">
             <div class="flex flex-col md:flex-row items-center justify-between gap-3">
                 <div class="flex items-center gap-3">
@@ -979,21 +982,26 @@
                     </div>
                     <div>
                         <h4 class="font-black text-slate-900 text-sm sm:text-base flex items-center gap-2">
-                            <span>🔍 ตรวจสอบสิทธิ์จับฉลากรางวัลใหญ่ด่วน (Instant Privilege Checker)</span>
+                            <span>🔍 ตรวจสอบสิทธิ์ & บันทึกรางวัลหน้าบูธ (Privilege Check & Prize Award)</span>
                         </h4>
                         <p class="text-xs text-slate-500">
-                            พิมพ์รหัสพนักงาน 6 หลัก เพื่อเช็กทันทีว่าเคยได้รับรางวัลใหญ่ไปแล้วในวันนี้หรือไม่
+                            พิมพ์รหัสพนักงาน 6 หลัก เพื่อเช็กสิทธิ์ หรือกดบันทึกรางวัลสำหรับเกมแข่งขันอื่นหน้าบูธได้ทันทีค่ะ
                         </p>
                     </div>
                 </div>
-                <form onsubmit="event.preventDefault(); executeQuickPrivilegeCheck();" class="flex items-center gap-2 w-full md:w-auto">
-                    <input type="text" id="admin-quick-checker-input" placeholder="พิมพ์รหัสพนักงาน (เช่น 084843)..."
-                        inputmode="numeric" pattern="[0-9]*" maxlength="10"
-                        class="w-full md:w-64 bg-white border-2 border-amber-300 rounded-2xl px-4 py-2 text-xs font-black text-slate-800 placeholder-slate-400 focus:outline-none focus:border-teal-500 shadow-inner">
-                    <button type="submit" class="btn-clay-yellow px-4 py-2 text-xs font-black shrink-0 cursor-pointer shadow-sm flex items-center gap-1.5">
-                        <i class="fa-solid fa-magnifying-glass"></i> <span>ตรวจสิทธิ์</span>
+                <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                    <form onsubmit="event.preventDefault(); executeQuickPrivilegeCheck();" class="flex items-center gap-2 w-full sm:w-auto">
+                        <input type="text" id="admin-quick-checker-input" placeholder="พิมพ์รหัสพนักงาน (เช่น 012345)..."
+                            inputmode="numeric" pattern="[0-9]*" maxlength="10"
+                            class="w-full sm:w-60 bg-white border-2 border-amber-300 rounded-2xl px-4 py-2 text-xs font-black text-slate-800 placeholder-slate-400 focus:outline-none focus:border-teal-500 shadow-inner">
+                        <button type="submit" class="btn-clay-yellow px-4 py-2 text-xs font-black shrink-0 cursor-pointer shadow-sm flex items-center gap-1.5">
+                            <i class="fa-solid fa-magnifying-glass"></i> <span>ตรวจสิทธิ์</span>
+                        </button>
+                    </form>
+                    <button type="button" onclick="openExternalPrizeAwardModal()" class="btn-clay-teal px-3.5 py-2 text-xs font-black shrink-0 cursor-pointer shadow-sm flex items-center gap-1.5" title="บันทึกมอบรางวัลสำหรับเกมอื่นที่ไม่ได้เล่นในระบบ">
+                        <i class="fa-solid fa-gift"></i> <span>+ บันทึกรางวัลเกมอื่น</span>
                     </button>
-                </form>
+                </div>
             </div>
             <!-- Quick Checker Result Container -->
             <div id="admin-quick-checker-result" class="hidden mt-3 pt-3 border-t-2 border-dashed border-amber-200">
@@ -1100,11 +1108,16 @@
 
         <!-- RECENT PLAY HISTORY LOG -->
         <div class="clay-card p-5 sm:p-6 border-4 border-white shadow-xl">
-            <h3 class="font-black text-base text-slate-800 mb-3 flex items-center gap-2">
-                <i class="fa-solid fa-clock-rotate-left text-teal-600"></i> บันทึกรอบการเล่นล่าสุด (ทั้งหมด <span id="log-total-count" class="text-teal-600 font-mono">0</span> รอบ)
-            </h3>
-            <div id="round-history-list" class="max-h-60 overflow-y-auto space-y-2 pr-1">
-                <!-- Individual round logs rendered via JS -->
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2 border-b border-slate-100">
+                <h3 class="font-black text-base text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left text-teal-600"></i> บันทึกประวัติการแข่งขัน (ทั้งหมด <span id="log-total-count" class="text-teal-600 font-mono">0</span> รอบการแข่ง)
+                </h3>
+                <span id="log-total-players-count" class="text-xs bg-teal-50 text-teal-800 font-bold px-3 py-1 rounded-full border border-teal-200">
+                    รวมผู้เล่น 0 คน-ครั้ง
+                </span>
+            </div>
+            <div id="round-history-list" class="max-h-96 overflow-y-auto space-y-3 pr-1">
+                <!-- Grouped heat logs rendered via JS -->
             </div>
         </div>
     </main>
@@ -1720,10 +1733,11 @@ function doPost(e) {<br>
             if (gameRules.grandPrizeRule === 'daily_once') {
                 const wonToday = allPriorGrandWins.filter(l => extractDateFromLog(l) === targetDate);
                 if (wonToday.length > 0) {
+                    const timeInfo = wonToday[0].timestamp || (wonToday[0].dateTime ? wonToday[0].dateTime.split(' ')[1] : '');
                     return {
                         eligible: false,
                         rule: 'daily_once',
-                        reason: `ได้รับสิทธิ์จับฉลากรางวัลใหญ่ไปแล้วในวันนี้ (${targetDate}) ในรอบ #${wonToday[0].roundId}`,
+                        reason: `ได้รับสิทธิ์จับฉลากรางวัลใหญ่ไปแล้วในวันนี้ (${targetDate}${timeInfo ? ' เวลา ' + timeInfo : ''})`,
                         previousRound: wonToday[0].roundId,
                         wonDate: targetDate,
                         wonCount: wonToday.length
@@ -1731,18 +1745,97 @@ function doPost(e) {<br>
                 }
             } else if (gameRules.grandPrizeRule === 'event_once') {
                 if (allPriorGrandWins.length > 0) {
+                    const prevDate = extractDateFromLog(allPriorGrandWins[0]);
+                    const timeInfo = allPriorGrandWins[0].timestamp || (allPriorGrandWins[0].dateTime ? allPriorGrandWins[0].dateTime.split(' ')[1] : '');
                     return {
                         eligible: false,
                         rule: 'event_once',
-                        reason: `ได้รับสิทธิ์จับฉลากรางวัลใหญ่ไปแล้วในรอบ #${allPriorGrandWins[0].roundId} (${extractDateFromLog(allPriorGrandWins[0])})`,
+                        reason: `ได้รับสิทธิ์จับฉลากรางวัลใหญ่ไปแล้วเมื่อวันที่ ${prevDate}${timeInfo ? ' เวลา ' + timeInfo : ''}`,
                         previousRound: allPriorGrandWins[0].roundId,
-                        wonDate: extractDateFromLog(allPriorGrandWins[0]),
+                        wonDate: prevDate,
                         wonCount: allPriorGrandWins.length
                     };
                 }
             }
 
             return { eligible: true };
+        }
+
+        // Helper: Convert time string ("08:39:58" or full dateTime) into seconds
+        function parseTimeSeconds(str) {
+            if (!str) return null;
+            const match = String(str).match(/(\d{1,2}):(\d{2}):(\d{2})/);
+            if (match) {
+                return parseInt(match[1], 10) * 3600 + parseInt(match[2], 10) * 60 + parseInt(match[3], 10);
+            }
+            return null;
+        }
+
+        // Helper: Group individual player logs into distinct Race Heats (รอบการแข่งขัน)
+        function groupLogsIntoHeats(logs) {
+            if (!logs || logs.length === 0) return [];
+
+            // Sort chronologically by roundId / log sequence
+            const sortedLogs = [...logs].sort((a, b) => (Number(a.roundId) || 0) - (Number(b.roundId) || 0));
+            const heats = [];
+            let currentHeat = null;
+
+            sortedLogs.forEach(log => {
+                const logHeatId = log.heatId || '';
+                const logDate = extractDateFromLog(log);
+                const logTimeSec = parseTimeSeconds(log.timestamp || log.dateTime);
+                const logTimeStr = log.timestamp || (log.dateTime ? log.dateTime.split(' ')[1] : '-');
+
+                let belongsToCurrent = false;
+
+                if (currentHeat) {
+                    if (logHeatId && currentHeat.heatId && logHeatId === currentHeat.heatId) {
+                        belongsToCurrent = true;
+                    } else if (!logHeatId || !currentHeat.heatId) {
+                        // Proximity check: same date and within 12 seconds
+                        if (currentHeat.date === logDate) {
+                            const curSec = parseTimeSeconds(currentHeat.timestamp || currentHeat.dateTime);
+                            if (logTimeSec !== null && curSec !== null) {
+                                if (Math.abs(logTimeSec - curSec) <= 12) {
+                                    belongsToCurrent = true;
+                                }
+                            } else if (currentHeat.timestamp === logTimeStr) {
+                                belongsToCurrent = true;
+                            }
+                        }
+                    }
+                }
+
+                if (belongsToCurrent) {
+                    currentHeat.racers.push(log);
+                } else {
+                    currentHeat = {
+                        heatId: logHeatId || ('heat_' + (heats.length + 1) + '_' + logDate),
+                        heatNumber: heats.length + 1,
+                        date: logDate,
+                        timestamp: logTimeStr,
+                        dateTime: log.dateTime || (logDate + ' ' + logTimeStr),
+                        racers: [log]
+                    };
+                    heats.push(currentHeat);
+                }
+            });
+
+            // Re-index heat numbers 1..N and rank racers inside each heat by score
+            heats.forEach((h, idx) => {
+                h.heatNumber = idx + 1;
+                h.racers.sort((a, b) => {
+                    if (a.heatRank && b.heatRank && a.heatRank !== b.heatRank) {
+                        return a.heatRank - b.heatRank;
+                    }
+                    return Number(b.score || 0) - Number(a.score || 0);
+                });
+                h.racers.forEach((r, rIdx) => {
+                    if (!r.heatRank) r.heatRank = rIdx + 1;
+                });
+            });
+
+            return heats;
         }
 
         // Compute 3-day daily summary & prize breakdown
@@ -1778,8 +1871,11 @@ function doPost(e) {<br>
                 day.logs.push(log);
             });
 
-            // Calculate Champion & High Score for each individual day
+            // Calculate Champion & High Score & Heats for each individual day
             Object.values(dailyMap).forEach(day => {
+                const dayHeats = groupLogsIntoHeats(day.logs);
+                day.totalHeats = dayHeats.length;
+
                 let maxScore = 0;
                 let champ = null;
                 day.logs.forEach(l => {
@@ -1896,16 +1992,18 @@ function doPost(e) {<br>
                                     คุณ ${emp.name} (รหัส: ${cleanId} • แผนก: ${emp.dept})
                                 </p>
                                 <p class="text-emerald-800 mt-0.5 font-bold">
-                                    สถานะวันนี้: <b>มีสิทธิ์จับฉลากรางวัลใหญ่ 1 สิทธิ์ (หากชนะที่ 1)</b>
+                                    สถานะวันนี้: <b>มีสิทธิ์จับฉลาก/รับรางวัลใหญ่ 1 สิทธิ์ (หากชนะกิจกรรม)</b>
                                 </p>
                                 <p class="text-[11px] text-slate-500 mt-0.5">
                                     ประวัติ: วันนี้เล่นไปแล้ว ${todayPlays.length} รอบ • รวมตลอดงาน ${allPlays.length} รอบ (ยังไม่เคยได้รางวัลใหญ่)
                                 </p>
                             </div>
                         </div>
-                        <span class="bg-emerald-500 text-white font-black px-3.5 py-1.5 rounded-xl shadow-xs shrink-0 inline-flex items-center gap-1.5">
-                            <i class="fa-solid fa-circle-check"></i> มีสิทธิ์จับฉลากใหญ่
-                        </span>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <button onclick="openExternalPrizeAwardModal('${cleanId}')" class="btn-clay-yellow px-3.5 py-2 text-xs font-black shadow-md cursor-pointer flex items-center gap-1.5">
+                                <i class="fa-solid fa-gift"></i> บันทึกมอบรางวัล (กิจกรรมหน้าบูธ)
+                            </button>
+                        </div>
                     </div>
                 `;
             } else {
@@ -1921,13 +2019,15 @@ function doPost(e) {<br>
                                     สถานะ: <b>${eligibility.reason}</b>
                                 </p>
                                 <p class="text-[11px] text-slate-600 mt-0.5">
-                                    👉 วันนี้เล่นไปแล้ว ${todayPlays.length} รอบ • ตามกติกาจำกัด 1 สิทธิ์/วัน แนะนำให้มอบรางวัลเป็น "${gameRules.consolationPrizeName}" แทนค่ะ
+                                    👉 วันนี้เล่นไปแล้ว ${todayPlays.length} รอบ • ตามกติกาจำกัด 1 สิทธิ์/วัน หากแข่งเกมอื่นแนะนำให้มอบเป็น "${gameRules.consolationPrizeName}" แทนค่ะ
                                 </p>
                             </div>
                         </div>
-                        <span class="bg-amber-400 text-amber-950 font-black px-3.5 py-1.5 rounded-xl shadow-xs shrink-0 inline-flex items-center gap-1.5">
-                            <i class="fa-solid fa-cookie-bite"></i> มอบขนมแทน
-                        </span>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <button onclick="openExternalPrizeAwardModal('${cleanId}')" class="bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-xs cursor-pointer flex items-center gap-1.5">
+                                <i class="fa-solid fa-pen-to-square"></i> แก้ไข / บันทึกรางวัลเพิ่ม
+                            </button>
+                        </div>
                     </div>
                 `;
             }
@@ -5262,8 +5362,12 @@ function doPost(e) {<br>
             const standings = getAggregatedStandings(activeLogsForView);
             const searchQuery = document.getElementById('admin-search').value.trim().toLowerCase();
 
+            const heats = groupLogsIntoHeats(activeLogsForView);
+
             document.getElementById('stat-unique-players').textContent = standings.length;
             document.getElementById('stat-total-rounds').textContent = activeLogsForView.length;
+            const heatBadgeEl = document.getElementById('stat-total-heats-badge');
+            if (heatBadgeEl) heatBadgeEl.textContent = `(${heats.length} รอบแข่ง)`;
             document.getElementById('db-count').textContent = Object.keys(employeeDB).length;
             
             const awardedCount = Object.keys(prizesAwarded).length;
@@ -5395,29 +5499,75 @@ function doPost(e) {<br>
                 });
             }
 
-            // Chronological Round Logs
-            document.getElementById('log-total-count').textContent = activeLogsForView.length;
+            // Chronological Round Logs Grouped by Race Heat
+            const totalCountEl = document.getElementById('log-total-count');
+            if (totalCountEl) totalCountEl.textContent = heats.length;
+            const totalPlayersEl = document.getElementById('log-total-players-count');
+            if (totalPlayersEl) totalPlayersEl.textContent = `รวมผู้เล่น ${activeLogsForView.length} คน-ครั้ง`;
+
             const logList = document.getElementById('round-history-list');
             logList.innerHTML = '';
-            if (activeLogsForView.length === 0) {
-                logList.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">ยังไม่มีประวัติการเล่น</p>`;
+            if (heats.length === 0) {
+                logList.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">ยังไม่มีประวัติการแข่งขัน</p>`;
             } else {
-                [...activeLogsForView].reverse().forEach(log => {
-                    const prizeTag = log.prize || (prizesAwarded[log.empId]?.prizeName) || (log.heatRank === 1 ? gameRules.rank1PrizeName : gameRules.consolationPrizeName);
-                    const isDup = log.isDuplicateWin;
+                [...heats].reverse().forEach(heat => {
+                    let racersHtml = '';
+                    heat.racers.forEach((racer, idx) => {
+                        const rank = idx + 1;
+                        const rankBadge = rank === 1 
+                            ? `<span class="bg-amber-100 text-amber-900 font-black text-[11px] px-2 py-0.5 rounded-md border border-amber-300 shrink-0">👑 อันดับ 1 (ชนะเลิศ)</span>`
+                            : rank === 2
+                                ? `<span class="bg-sky-100 text-sky-900 font-bold text-[11px] px-2 py-0.5 rounded-md border border-sky-200 shrink-0">🥈 อันดับ 2</span>`
+                                : rank === 3
+                                    ? `<span class="bg-rose-100 text-rose-900 font-bold text-[11px] px-2 py-0.5 rounded-md border border-rose-200 shrink-0">🥉 อันดับ 3</span>`
+                                    : `<span class="bg-slate-100 text-slate-600 font-bold text-[11px] px-2 py-0.5 rounded-md shrink-0">อันดับ #${rank}</span>`;
+                        
+                        const prizeTag = racer.prize || (prizesAwarded[racer.empId]?.prizeName) || (rank === 1 ? gameRules.rank1PrizeName : gameRules.consolationPrizeName);
+                        const isDup = racer.isDuplicateWin;
+                        const prizeBadge = `<span class="text-[10px] ${isDup ? 'bg-amber-50 text-amber-900 border border-amber-300' : (rank === 1 ? 'bg-amber-100 text-amber-900 font-black border border-amber-200' : 'bg-teal-50 text-teal-800 border border-teal-200')} px-2.5 py-0.5 rounded font-bold shrink-0">
+                            ${isDup ? '⚠️ ' : (rank === 1 ? '🎁 ' : '🍬 ')}${prizeTag}
+                        </span>`;
+
+                        const scoreDisplay = racer.isExternalGame
+                            ? `<span class="font-extrabold text-amber-900 text-xs bg-amber-100 border border-amber-300 px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-2xs"><i class="fa-solid fa-star text-amber-600"></i> ${racer.activityName || 'กิจกรรมหน้าบูธ'}</span>`
+                            : `<span class="font-black text-emerald-600 text-sm font-mono">${racer.score} คะแนน</span>`;
+
+                        racersHtml += `
+                            <div class="flex items-center justify-between bg-slate-50 hover:bg-slate-100/80 px-3 py-2 rounded-xl text-xs border border-slate-100 transition">
+                                <div class="flex items-center gap-2 overflow-hidden min-w-0 flex-wrap sm:flex-nowrap">
+                                    ${rankBadge}
+                                    <span class="font-bold text-slate-800 truncate">${racer.name}</span>
+                                    <span class="text-slate-400 text-[11px] font-mono shrink-0">(${racer.empId} • ${racer.dept})</span>
+                                    ${prizeBadge}
+                                </div>
+                                <div class="flex items-center gap-2 shrink-0 ml-2">
+                                    ${scoreDisplay}
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    const isExtHeat = heat.racers.some(r => r.isExternalGame);
+                    const heatBadge = isExtHeat 
+                        ? `<span class="bg-amber-500 text-amber-950 font-black text-xs px-2.5 py-1 rounded-lg shadow-xs flex items-center gap-1.5"><i class="fa-solid fa-trophy"></i> กิจกรรมหน้าบูธ (นอกระบบ)</span>`
+                        : `<span class="bg-teal-700 text-white font-black text-xs px-2.5 py-1 rounded-lg shadow-xs flex items-center gap-1.5"><i class="fa-solid fa-flag-checkered"></i> รอบการแข่งขันที่ #${heat.heatNumber}</span>`;
+
                     logList.innerHTML += `
-                        <div class="flex items-center justify-between bg-slate-50 px-3.5 py-2 rounded-xl text-xs border border-slate-100">
-                            <div class="flex items-center gap-2.5 overflow-hidden min-w-0">
-                                <span class="bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded text-[10px] shrink-0">รอบที่ #${log.roundId}</span>
-                                <span class="font-bold text-slate-800 truncate">${log.name}</span>
-                                <span class="text-slate-400 text-[11px] truncate">(${log.empId} • ${log.dept})</span>
-                                <span class="text-[10px] ${isDup ? 'bg-amber-50 text-amber-900 border border-amber-300' : (log.heatRank === 1 ? 'bg-amber-100 text-amber-800' : 'bg-teal-50 text-teal-700')} px-2 py-0.5 rounded font-bold shrink-0">
-                                    ${isDup ? '⚠️ ' : ''}${prizeTag}
+                        <div class="bg-white border-2 border-slate-200/90 rounded-2xl p-3.5 shadow-xs space-y-2">
+                            <div class="flex items-center justify-between pb-2 border-b border-slate-100 flex-wrap gap-1">
+                                <div class="flex items-center gap-2">
+                                    ${heatBadge}
+                                    <span class="text-xs font-bold text-slate-600 font-mono flex items-center gap-1">
+                                        <i class="fa-regular fa-clock text-slate-400"></i> ${heat.timestamp || '-'}
+                                    </span>
+                                    <span class="text-[11px] font-bold text-slate-400">(${heat.date})</span>
+                                </div>
+                                <span class="bg-slate-100 text-slate-700 text-xs font-black px-2.5 py-0.5 rounded-full border border-slate-200">
+                                    ผู้รับรางวัล ${heat.racers.length} คน
                                 </span>
                             </div>
-                            <div class="flex items-center gap-3 shrink-0 ml-2">
-                                <span class="font-extrabold text-emerald-600">${log.score} คะแนน</span>
-                                <span class="text-[11px] text-slate-400 font-mono">${log.timestamp || '-'}</span>
+                            <div class="space-y-1.5 pt-1">
+                                ${racersHtml}
                             </div>
                         </div>
                     `;
@@ -5459,6 +5609,48 @@ function doPost(e) {<br>
             const defaultForRank = rank === 1 ? gameRules.rank1PrizeName : gameRules.consolationPrizeName;
             document.getElementById('prize-name-input').value = existing ? existing.prizeName : defaultForRank;
             renderModalPrizeChips(document.getElementById('prize-name-input').value);
+            document.getElementById('prize-modal').classList.remove('hidden');
+        };
+
+        // Standalone / External Booth Game Prize Award Modal
+        window.openExternalPrizeAwardModal = function(givenEmpId) {
+            let targetId = (givenEmpId || '').trim();
+            if (!targetId) {
+                const checkerInput = document.getElementById('admin-quick-checker-input');
+                if (checkerInput && checkerInput.value.trim()) {
+                    targetId = checkerInput.value.trim();
+                }
+            }
+            if (!targetId) {
+                targetId = prompt("กรุณากรอกรหัสพนักงานที่ต้องการบันทึกมอบรางวัล (เช่น 012345):");
+            }
+            if (!targetId) return;
+
+            targetId = String(targetId).trim().replace(/^'/, '');
+            const emp = employeeDB[targetId] || { name: 'พนักงานรหัส ' + targetId, dept: '-' };
+
+            selectedWinnerForPrize = {
+                empId: targetId,
+                name: emp.name,
+                dept: emp.dept,
+                rank: 1,
+                isExternalGame: true,
+                activityName: 'กิจกรรมแข่งขันหน้าบูธ'
+            };
+
+            const rankEl = document.getElementById('modal-winner-rank');
+            if (rankEl) rankEl.innerHTML = `<span class="bg-amber-400 text-amber-950 px-2 py-0.5 rounded text-[11px] font-black mr-1">🎯 กิจกรรมหน้าบูธ</span> ผู้ได้รับรางวัลใหญ่`;
+            const nameEl = document.getElementById('modal-winner-name');
+            if (nameEl) nameEl.textContent = `${emp.name} (${targetId})`;
+            const deptEl = document.getElementById('modal-winner-dept');
+            if (deptEl) deptEl.textContent = `${emp.dept} • กิจกรรมแข่งขัน / หน้าบูธ`;
+
+            const existing = prizesAwarded[targetId];
+            const defaultPrize = existing ? existing.prizeName : gameRules.rank1PrizeName;
+            const input = document.getElementById('prize-name-input');
+            if (input) input.value = defaultPrize;
+            renderModalPrizeChips(input ? input.value : '');
+
             document.getElementById('prize-modal').classList.remove('hidden');
         };
 
@@ -5548,15 +5740,73 @@ function doPost(e) {<br>
                 try {
                     localStorage.setItem('health_sprint_wheel_prizes', JSON.stringify(wheelPrizes));
                 } catch(e) {}
+                broadcastSyncMessage({
+                    type: 'WHEEL_PRIZES_UPDATE',
+                    prizes: wheelPrizes
+                });
             }
 
-            // Update prize in playLogs for this employee
+            // Update prize in playLogs for this employee or add new log for external booth activity
             const lastWinnerLog = playLogs.slice().reverse().find(l => l.empId === selectedWinnerForPrize.empId);
-            if (lastWinnerLog) {
+            if (lastWinnerLog && !selectedWinnerForPrize.isExternalGame) {
                 lastWinnerLog.prize = prizeName;
                 try {
                     localStorage.setItem('health_sprint_play_logs', JSON.stringify(playLogs));
                 } catch(e) {}
+            } else {
+                // External booth game or standalone prize award
+                const todayDateStr = new Date().toLocaleDateString('th-TH');
+                const timeStr = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                const fullDateTime = todayDateStr + ' ' + timeStr;
+                const empInfo = employeeDB[selectedWinnerForPrize.empId] || { name: 'พนักงานรหัส ' + selectedWinnerForPrize.empId, dept: '-' };
+
+                const newExtLog = {
+                    roundId: playLogs.length + 1,
+                    heatId: 'booth_ext_' + Date.now(),
+                    empId: selectedWinnerForPrize.empId,
+                    empIdText: "'" + selectedWinnerForPrize.empId,
+                    name: selectedWinnerForPrize.name || empInfo.name,
+                    dept: selectedWinnerForPrize.dept || empInfo.dept,
+                    score: 0,
+                    heatRank: 1,
+                    prize: prizeName,
+                    isExternalGame: true,
+                    activityName: selectedWinnerForPrize.activityName || 'กิจกรรมแข่งขันหน้าบูธ',
+                    timestamp: timeStr,
+                    dateTime: fullDateTime,
+                    date: todayDateStr
+                };
+                playLogs.push(newExtLog);
+                try {
+                    localStorage.setItem('health_sprint_play_logs', JSON.stringify(playLogs));
+                } catch(e) {}
+
+                if (db && currentUser) {
+                    try {
+                        addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'play_logs'), newExtLog);
+                    } catch(e) {}
+                }
+
+                if (googleScriptUrl) {
+                    fetch(googleScriptUrl, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            heatId: newExtLog.heatId,
+                            roundId: newExtLog.roundId,
+                            empId: newExtLog.empIdText,
+                            empIdRaw: newExtLog.empId,
+                            name: newExtLog.name,
+                            dept: newExtLog.dept,
+                            score: newExtLog.score,
+                            heatRank: newExtLog.heatRank,
+                            prize: newExtLog.prize,
+                            timestamp: newExtLog.timestamp,
+                            activity: newExtLog.activityName
+                        })
+                    }).catch(e => console.warn("External Sheets sync warn:", e));
+                }
             }
 
             broadcastSyncMessage({
