@@ -555,7 +555,7 @@
                     <!-- Search Pill Bar (Exact style from user reference image!) -->
                     <div class="clay-pill-bar flex items-center bg-white rounded-full p-1.5 pl-4 shadow-lg border-2 border-amber-100">
                         <span class="text-xl mr-2 animate-bounce">✨</span>
-                        <input type="tel" id="emp-id-input" placeholder="กรอกรหัสพนักงานเฉพาะตัวเลข เช่น 012345..." 
+                        <input type="tel" id="emp-id-input" placeholder="กรอกรหัสพนักงานเฉพาะตัวเลข 6 หลัก" 
                             oninput="this.value = this.value.replace(/\D/g, ''); lookupEmployee(this.value);"
                             onkeypress="return (event.charCode >= 48 && event.charCode <= 57) || event.charCode === 13;"
                             onpaste="setTimeout(() => { this.value = this.value.replace(/\D/g, ''); lookupEmployee(this.value); }, 0)"
@@ -1736,6 +1736,20 @@ function doPost(e) {<br>
             if (typeof prizesAwarded !== 'undefined' && prizesAwarded) {
                 const award = prizesAwarded[cleanId] || prizesAwarded[strippedKey];
                 if (award && award.prizeName) {
+                    const isTicketOnly = award.isPendingLuckyDraw || 
+                                         award.prizeName === gameRules.rank1PrizeName || 
+                                         award.prizeName.includes('สิทธิ์จับฉลาก');
+                    // If they hold a ticket from the race/session and are awaiting physical prize selection
+                    if (isTicketOnly) {
+                        return {
+                            eligible: true,
+                            isPendingLuckyDraw: true,
+                            ticketPrizeName: award.prizeName,
+                            wonDate: award.wonDate,
+                            awardedAt: award.awardedAt
+                        };
+                    }
+
                     const awardDate = award.wonDate || targetDate;
                     if (gameRules.grandPrizeRule === 'event_once' || (gameRules.grandPrizeRule === 'daily_once' && awardDate === targetDate)) {
                         return {
@@ -1750,25 +1764,26 @@ function doPost(e) {<br>
                 }
             }
 
-            // 2. Check playLogs for any prior grand prize wins
+            // 2. Check playLogs for any prior completed grand prize wins (excluding pending tickets)
             const allPriorGrandWins = playLogs.filter(l => {
                 const logEmp = String(l.empId || '').trim().replace(/^'/, '');
                 const logStripped = logEmp.replace(/^0+/, '') || logEmp;
                 if (logEmp !== cleanId && logStripped !== strippedKey) return false;
 
+                // If explicitly marked pending lucky draw ticket, it is not an already claimed physical prize
+                if (l.isPendingLuckyDraw) return false;
+
                 const prizeStr = String(l.prize || '').trim();
                 const isConsolation = (prizeStr === gameRules.consolationPrizeName) || prizeStr.includes('ขนม');
-                const isRank1 = Number(l.heatRank) === 1;
+                if (isConsolation || prizeStr === '-' || !prizeStr) return false;
 
-                // Grand win if:
-                // - Won Rank 1 and not auto-swapped to snack duplicate
-                // - OR prize is explicitly anything other than consolation snack
-                // - OR contains grand prize keywords
-                const hasWonGrand = (isRank1 && !l.isDuplicateWin && !isConsolation) ||
-                                   (prizeStr && !isConsolation && prizeStr !== '-' && !prizeStr.includes('ขนม')) ||
-                                   prizeStr.includes('จับฉลาก') ||
-                                   prizeStr.includes('รางวัลใหญ่');
-                return hasWonGrand;
+                // If the prize in log is literally just the ticket name ("สิทธิ์จับฉลากรางวัลใหญ่"),
+                // and the user hasn't recorded an actual physical prize yet, don't block them as duplicate!
+                if (prizeStr === gameRules.rank1PrizeName || prizeStr.includes('สิทธิ์จับฉลาก')) {
+                    return false;
+                }
+
+                return true;
             });
 
             if (gameRules.grandPrizeRule === 'daily_once') {
@@ -2034,7 +2049,29 @@ function doPost(e) {<br>
             const eligibility = checkGrandPrizeEligibility(cleanId, todayStr);
 
             resultBox.classList.remove('hidden');
-            if (eligibility.eligible) {
+            if (eligibility.isPendingLuckyDraw) {
+                resultBox.innerHTML = `
+                    <div class="bg-gradient-to-r from-amber-100 via-yellow-100 to-amber-200 border-3 border-amber-400 rounded-2xl p-4 shadow-md flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                        <div class="flex items-center gap-3">
+                            <span class="text-3xl animate-bounce">👑 🎟️</span>
+                            <div class="text-left">
+                                <p class="font-black text-amber-950 text-sm">
+                                    คุณ ${emp.name} (รหัส: ${cleanId} • แผนก: ${emp.dept})
+                                </p>
+                                <p class="text-amber-900 font-black text-xs sm:text-sm mt-0.5">
+                                    🎉 ชนะเลิศอันดับ 1 ในการแข่งขัน! ได้รับ <b>"สิทธิ์จับฉลากรางวัลใหญ่"</b>
+                                </p>
+                                <p class="text-[11px] text-slate-700 mt-0.5 font-bold">
+                                    👉 ให้พนักงานล้วงจับสลากในกล่อง แล้วกดปุ่มด้านล่างเพื่อบันทึกของรางวัลที่จับได้ (เช่น แก้วน้ำ) และตัดสต็อกค่ะ
+                                </p>
+                            </div>
+                        </div>
+                        <button onclick="openPrizeModal('${cleanId}', 1)" class="btn-clay-yellow px-4 py-2.5 text-xs font-black shadow-md cursor-pointer flex items-center gap-1.5 shrink-0">
+                            <i class="fa-solid fa-gift text-sm"></i> <span>บันทึกของรางวัลที่จับได้</span>
+                        </button>
+                    </div>
+                `;
+            } else if (eligibility.eligible) {
                 resultBox.innerHTML = `
                     <div class="bg-emerald-50 border-2 border-emerald-400 rounded-2xl p-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs shadow-xs">
                         <div class="flex items-center gap-3">
@@ -2975,10 +3012,11 @@ function doPost(e) {<br>
                     break;
                 }
 
+                case 'SCORE_FINAL':
                 case 'SCORE': {
                     if (msg.empId && activeRacers[msg.empId]) {
                         if (!currentPlayer || currentPlayer.id !== msg.empId) {
-                            activeRacers[msg.empId].score = msg.score;
+                            activeRacers[msg.empId].score = Math.max(activeRacers[msg.empId].score || 0, Number(msg.score) || 0);
                             renderAllLiveViews();
                         }
                     }
@@ -3312,6 +3350,9 @@ function doPost(e) {<br>
                             heatId: data.heatId || null
                         };
                         activeRacers = data.racers || {};
+                        if (currentPlayer && activeRacers[currentPlayer.id]) {
+                            activeRacers[currentPlayer.id].score = Math.max(activeRacers[currentPlayer.id].score || 0, currentScore);
+                        }
                         
                         // Sync UI across all open devices/tabs
                         handleRemoteRaceStateChange(prevStatus, raceState.status);
@@ -4222,6 +4263,9 @@ function doPost(e) {<br>
                 document.getElementById('stage-timer').textContent = rem.toFixed(1);
 
                 if (rem <= 0) {
+                    clearInterval(gameTimerInterval);
+                    document.getElementById('game-timer').textContent = "0.0";
+                    document.getElementById('stage-timer').textContent = "0.0";
                     finishSimultaneousRace();
                 }
             }, 100);
@@ -4349,7 +4393,13 @@ function doPost(e) {<br>
                 document.getElementById('stage-timer').textContent = remaining.toFixed(1);
 
                 if (remaining <= 0) {
-                    finishSimultaneousRace();
+                    clearInterval(gameTimerInterval);
+                    document.getElementById('game-timer').textContent = "0.0";
+                    document.getElementById('stage-timer').textContent = "0.0";
+                    // 700ms grace period so all final motion packets from mobile clients arrive before Host finalizes logs & Sheets
+                    setTimeout(() => {
+                        finishSimultaneousRace();
+                    }, 700);
                 }
             }, 100);
         }
@@ -4471,7 +4521,23 @@ function doPost(e) {<br>
             raceState.adminStarted = false;
             raceState.adminStartedAt = 0;
             if (currentPlayer && activeRacers[currentPlayer.id]) {
+                currentScore = Math.max(currentScore, activeRacers[currentPlayer.id].score || 0);
                 activeRacers[currentPlayer.id].score = currentScore;
+                broadcastSyncMessage({
+                    type: 'SCORE_FINAL',
+                    empId: currentPlayer.id,
+                    score: currentScore
+                });
+                if (db && currentUser) {
+                    try {
+                        const raceDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'live_race', 'current_heat');
+                        updateDoc(raceDocRef, {
+                            [`racers.${currentPlayer.id}.score`]: currentScore,
+                            [`racers.${currentPlayer.id}.finished`]: true,
+                            updatedAt: Date.now()
+                        });
+                    } catch(e) {}
+                }
             }
 
             // Victory Fanfare & Confetti
@@ -4533,12 +4599,14 @@ function doPost(e) {<br>
                         const eligibility = checkGrandPrizeEligibility(cleanEmpId, todayDateStr);
                         if (eligibility.eligible) {
                             assignedPrize = gameRules.rank1PrizeName;
-                            if (!prizesAwarded[cleanEmpId]) {
+                            if (!prizesAwarded[cleanEmpId] || prizesAwarded[cleanEmpId].isPendingLuckyDraw) {
                                 prizesAwarded[cleanEmpId] = {
                                     rank: 1,
                                     prizeName: gameRules.rank1PrizeName,
+                                    isPendingLuckyDraw: true,
                                     awardedAt: timeStr,
-                                    wonDate: todayDateStr
+                                    wonDate: todayDateStr,
+                                    heatId: currentHeatId
                                 };
                                 localStorage.setItem('health_sprint_prizes', JSON.stringify(prizesAwarded));
                             }
@@ -4564,6 +4632,7 @@ function doPost(e) {<br>
                         score: r.score,
                         heatRank: heatRank,
                         prize: assignedPrize,
+                        isPendingLuckyDraw: (heatRank === 1 && !isDuplicateWin),
                         isDuplicateWin: isDuplicateWin,
                         duplicateReason: duplicateReason,
                         timestamp: timeStr,
@@ -4607,6 +4676,16 @@ function doPost(e) {<br>
                 await pushLiveRaceState();
                 renderAllLiveViews();
                 renderAdminDashboard();
+
+                // Auto-open Prize Modal on Host/Admin screen for the Rank 1 winner to record their lucky draw prize
+                if (sortedHeatRacers.length > 0 && isHostLogger) {
+                    const winner1 = sortedHeatRacers[0];
+                    if (winner1 && !winner1.isBot) {
+                        setTimeout(() => {
+                            openPrizeModal(winner1.empId, 1);
+                        }, 600);
+                    }
+                }
 
                 // If host screen also had a player active, show their result
                 if (currentPlayer && activeRacers[currentPlayer.id]) {
@@ -5657,13 +5736,17 @@ function doPost(e) {<br>
             document.getElementById('modal-winner-name').textContent = `${winner.name} (${winner.empId})`;
             document.getElementById('modal-winner-dept').textContent = `${winner.dept} • คะแนน: ${winner.bestScore || 0}`;
             
-            // Display Warning if already received grand prize
+            // Display Warning if already received grand prize, or gold banner for pending lucky draw
             const warningEl = document.getElementById('modal-winner-warning');
             const todayStr = new Date().toLocaleDateString('th-TH');
             const eligibility = checkGrandPrizeEligibility(empId, todayStr);
+            const existing = prizesAwarded[empId];
+            const hasActualCustomPrize = existing && existing.prizeName && !existing.isPendingLuckyDraw && existing.prizeName !== gameRules.rank1PrizeName && !existing.prizeName.includes('สิทธิ์จับฉลาก');
+
             if (warningEl) {
                 if (!eligibility.eligible) {
                     warningEl.classList.remove('hidden');
+                    warningEl.className = "mb-3 p-3.5 bg-amber-100/90 border-2 border-amber-400 rounded-2xl text-xs text-amber-950 shadow-xs";
                     warningEl.innerHTML = `
                         <div class="flex items-start gap-2.5">
                             <span class="text-2xl shrink-0">⚠️</span>
@@ -5674,16 +5757,30 @@ function doPost(e) {<br>
                             </div>
                         </div>
                     `;
+                } else if (rank === 1) {
+                    warningEl.classList.remove('hidden');
+                    warningEl.className = "mb-3 p-3.5 bg-gradient-to-r from-amber-50 to-yellow-100 border-2 border-amber-300 rounded-2xl text-xs text-amber-950 shadow-xs";
+                    warningEl.innerHTML = `
+                        <div class="flex items-start gap-2.5">
+                            <span class="text-2xl shrink-0">👑 🎁</span>
+                            <div>
+                                <p class="font-black text-amber-950 text-xs sm:text-sm">ผู้ชนะเลิศได้รับ "สิทธิ์จับฉลากรางวัลใหญ่"</p>
+                                <p class="text-[11px] text-amber-900 font-bold mt-0.5">👉 ให้พนักงานล้วงจับสลากในกล่อง แล้วคลิกเลือกของรางวัลที่จับได้ด้านล่างเพื่อบันทึกและตัดสต็อกค่ะ</p>
+                            </div>
+                        </div>
+                    `;
                 } else {
                     warningEl.classList.add('hidden');
                     warningEl.innerHTML = '';
                 }
             }
 
-            const existing = prizesAwarded[empId];
-            const defaultForRank = rank === 1 ? gameRules.rank1PrizeName : gameRules.consolationPrizeName;
-            document.getElementById('prize-name-input').value = existing ? existing.prizeName : defaultForRank;
-            renderModalPrizeChips(document.getElementById('prize-name-input').value);
+            const prizeInput = document.getElementById('prize-name-input');
+            if (prizeInput) {
+                prizeInput.value = hasActualCustomPrize ? existing.prizeName : '';
+                prizeInput.placeholder = 'คลิกเลือกหรือพิมพ์ของรางวัลที่จับได้ (เช่น แก้วน้ำเยติ)...';
+            }
+            renderModalPrizeChips('');
             document.getElementById('prize-modal').classList.remove('hidden');
         };
 
@@ -5727,6 +5824,7 @@ function doPost(e) {<br>
             if (warningEl) {
                 if (!eligibility.eligible) {
                     warningEl.classList.remove('hidden');
+                    warningEl.className = "mb-3 p-3.5 bg-amber-100/90 border-2 border-amber-400 rounded-2xl text-xs text-amber-950 shadow-xs";
                     warningEl.innerHTML = `
                         <div class="flex items-start gap-2.5">
                             <span class="text-2xl shrink-0">⚠️</span>
@@ -5744,10 +5842,13 @@ function doPost(e) {<br>
             }
 
             const existing = prizesAwarded[targetId];
-            const defaultPrize = existing ? existing.prizeName : gameRules.rank1PrizeName;
+            const hasActualCustomPrize = existing && existing.prizeName && !existing.isPendingLuckyDraw && existing.prizeName !== gameRules.rank1PrizeName && !existing.prizeName.includes('สิทธิ์จับฉลาก');
             const input = document.getElementById('prize-name-input');
-            if (input) input.value = defaultPrize;
-            renderModalPrizeChips(input ? input.value : '');
+            if (input) {
+                input.value = hasActualCustomPrize ? existing.prizeName : '';
+                input.placeholder = 'คลิกเลือกหรือพิมพ์ของรางวัลที่จับได้ (เช่น แก้วน้ำเยติ)...';
+            }
+            renderModalPrizeChips('');
 
             document.getElementById('prize-modal').classList.remove('hidden');
         };
@@ -5757,9 +5858,8 @@ function doPost(e) {<br>
             if (!container) return;
             const q = (filterQuery || '').trim().toLowerCase();
 
-            // All prizes in system + consolation prize + grand ticket
+            // All physical prizes in booth lucky draw + consolation snack
             let list = [
-                { id: 'grand_ticket', name: gameRules.rank1PrizeName, icon: '👑', stock: -1 },
                 ...wheelPrizes,
                 { id: 'conso', name: gameRules.consolationPrizeName, icon: '🍬', stock: -1 }
             ];
@@ -5839,10 +5939,15 @@ function doPost(e) {<br>
                 showToast("กรุณาระบุชื่อรางวัลค่ะ", "warning");
                 return;
             }
+            const todayDateStr = new Date().toLocaleDateString('th-TH');
+            const timeStr = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
             const prizeData = {
-                rank: selectedWinnerForPrize.rank,
+                rank: selectedWinnerForPrize.rank || 1,
                 prizeName: prizeName,
-                awardedAt: new Date().toLocaleTimeString('th-TH')
+                isPendingLuckyDraw: false,
+                awardedAt: timeStr,
+                wonDate: todayDateStr
             };
             prizesAwarded[selectedWinnerForPrize.empId] = prizeData;
             localStorage.setItem('health_sprint_prizes', JSON.stringify(prizesAwarded));
@@ -5861,16 +5966,15 @@ function doPost(e) {<br>
             }
 
             // Update prize in playLogs for this employee or add new log for external booth activity
-            const lastWinnerLog = playLogs.slice().reverse().find(l => l.empId === selectedWinnerForPrize.empId);
+            const lastWinnerLog = playLogs.slice().reverse().find(l => l.empId === selectedWinnerForPrize.empId && (l.isPendingLuckyDraw || l.heatRank === 1));
             if (lastWinnerLog && !selectedWinnerForPrize.isExternalGame) {
                 lastWinnerLog.prize = prizeName;
+                lastWinnerLog.isPendingLuckyDraw = false;
                 try {
                     localStorage.setItem('health_sprint_play_logs', JSON.stringify(playLogs));
                 } catch(e) {}
             } else {
                 // External booth game or standalone prize award
-                const todayDateStr = new Date().toLocaleDateString('th-TH');
-                const timeStr = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
                 const fullDateTime = todayDateStr + ' ' + timeStr;
                 const empInfo = employeeDB[selectedWinnerForPrize.empId] || { name: 'พนักงานรหัส ' + selectedWinnerForPrize.empId, dept: '-' };
 
@@ -5884,6 +5988,7 @@ function doPost(e) {<br>
                     score: 0,
                     heatRank: 1,
                     prize: prizeName,
+                    isPendingLuckyDraw: false,
                     isExternalGame: true,
                     activityName: selectedWinnerForPrize.activityName || 'กิจกรรมแข่งขันหน้าบูธ',
                     timestamp: timeStr,
@@ -5935,9 +6040,17 @@ function doPost(e) {<br>
                 } catch (e) {}
             }
 
+            const savedEmpId = selectedWinnerForPrize.empId;
             closePrizeModal();
             renderAdminDashboard();
             renderAllLiveViews();
+
+            // Refresh Quick Checker if it is currently displaying this employee
+            const checkerInput = document.getElementById('admin-quick-checker-input');
+            if (checkerInput && checkerInput.value.trim() === savedEmpId) {
+                executeQuickPrivilegeCheck();
+            }
+
             showToast(`🎉 บันทึกการมอบรางวัล "${prizeName}" เรียบร้อยแล้วค่ะ!`, "success");
         };
 
