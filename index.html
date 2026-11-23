@@ -555,7 +555,7 @@
                     <!-- Search Pill Bar (Exact style from user reference image!) -->
                     <div class="clay-pill-bar flex items-center bg-white rounded-full p-1.5 pl-4 shadow-lg border-2 border-amber-100">
                         <span class="text-xl mr-2 animate-bounce">✨</span>
-                        <input type="tel" id="emp-id-input" placeholder="กรอกรหัสพนักงานเฉพาะตัวเลข 6 หลัก" 
+                        <input type="tel" id="emp-id-input" placeholder="กรอกรหัสพนักงาน" 
                             oninput="this.value = this.value.replace(/\D/g, ''); lookupEmployee(this.value);"
                             onkeypress="return (event.charCode >= 48 && event.charCode <= 57) || event.charCode === 13;"
                             onpaste="setTimeout(() => { this.value = this.value.replace(/\D/g, ''); lookupEmployee(this.value); }, 0)"
@@ -3012,12 +3012,80 @@ function doPost(e) {<br>
                     break;
                 }
 
+                case 'TIME_UP': {
+                    if (isPlaying) {
+                        isPlaying = false;
+                        clearInterval(gameTimerInterval);
+                        window.removeEventListener('devicemotion', handleDeviceMotion);
+                        isMotionListenerAttached = false;
+
+                        document.getElementById('game-timer').textContent = "0.0";
+                        document.getElementById('stage-timer').textContent = "0.0";
+
+                        if (currentPlayer && activeRacers[currentPlayer.id]) {
+                            activeRacers[currentPlayer.id].score = currentScore;
+                            // Immediately broadcast confirmed final score to Host
+                            broadcastSyncMessage({
+                                type: 'SCORE_FINAL',
+                                empId: currentPlayer.id,
+                                score: currentScore
+                            });
+                            if (db && currentUser) {
+                                try {
+                                    const raceDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'live_race', 'current_heat');
+                                    updateDoc(raceDocRef, {
+                                        [`racers.${currentPlayer.id}.score`]: currentScore,
+                                        [`racers.${currentPlayer.id}.finished`]: true,
+                                        updatedAt: Date.now()
+                                    });
+                                } catch(e) {}
+                            }
+                        }
+                    }
+                    break;
+                }
+
                 case 'SCORE_FINAL':
                 case 'SCORE': {
                     if (msg.empId && activeRacers[msg.empId]) {
                         if (!currentPlayer || currentPlayer.id !== msg.empId) {
-                            activeRacers[msg.empId].score = Math.max(activeRacers[msg.empId].score || 0, Number(msg.score) || 0);
+                            const newScore = Math.max(activeRacers[msg.empId].score || 0, Number(msg.score) || 0);
+                            activeRacers[msg.empId].score = newScore;
                             renderAllLiveViews();
+
+                            // Safety Catch-Up: If race has already completed and playLogs has a lower score for this employee
+                            const currentHeatId = raceState.heatId;
+                            const loggedEntry = playLogs.slice().reverse().find(l => l.empId === msg.empId && (l.heatId === currentHeatId || !currentHeatId));
+                            if (loggedEntry && newScore > loggedEntry.score) {
+                                console.log(`[Auto-Correct Score] Updating score for ${msg.empId}: ${loggedEntry.score} -> ${newScore}`);
+                                loggedEntry.score = newScore;
+                                localStorage.setItem('health_sprint_play_logs', JSON.stringify(playLogs));
+                                renderAdminDashboard();
+                                renderAllLiveViews();
+
+                                // Send correction to Google Sheets so Sheets matches mobile 100%!
+                                if (googleScriptUrl) {
+                                    fetch(googleScriptUrl, {
+                                        method: 'POST',
+                                        mode: 'no-cors',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                            heatId: loggedEntry.heatId,
+                                            roundId: loggedEntry.roundId,
+                                            empId: loggedEntry.empIdText || ("'" + loggedEntry.empId),
+                                            empIdRaw: loggedEntry.empId,
+                                            name: loggedEntry.name,
+                                            dept: loggedEntry.dept,
+                                            score: newScore,
+                                            heatRank: loggedEntry.heatRank,
+                                            prize: loggedEntry.prize,
+                                            timestamp: loggedEntry.timestamp,
+                                            dateTime: loggedEntry.dateTime,
+                                            note: 'SCORE_CORRECTION'
+                                        })
+                                    }).catch(() => {});
+                                }
+                            }
                         }
                     }
                     break;
@@ -3424,8 +3492,8 @@ function doPost(e) {<br>
             activeRacers[currentPlayer.id].score = newScore;
             renderAllLiveViews();
 
-            // Real-time broadcast score to Big Stage & other devices
-            if (newScore - lastBroadcastScore >= 2 || newScore === 0 || newScore === 1) {
+            // Real-time broadcast score to Big Stage & other devices (broadcast every 1 step for zero-lag accuracy)
+            if (newScore - lastBroadcastScore >= 1 || newScore === 0) {
                 lastBroadcastScore = newScore;
                 broadcastSyncMessage({
                     type: 'SCORE',
@@ -4169,6 +4237,9 @@ function doPost(e) {<br>
                 } else if (raceState.status === 'racing') {
                     adminPill.textContent = "🔥 กำลังแข่งขันสด";
                     adminPill.className = "bg-rose-500 text-white text-[11px] font-black px-2.5 py-0.5 rounded-full uppercase animate-pulse";
+                } else if (raceState.status === 'tallying') {
+                    adminPill.textContent = "🏁 สรุปผลคะแนน...";
+                    adminPill.className = "bg-amber-400 text-slate-950 text-[11px] font-black px-2.5 py-0.5 rounded-full uppercase animate-pulse";
                 } else if (raceState.status === 'finished') {
                     adminPill.textContent = "🏁 จบการแข่งขัน";
                     adminPill.className = "bg-emerald-500 text-slate-950 text-[11px] font-black px-2.5 py-0.5 rounded-full uppercase";
@@ -4264,8 +4335,22 @@ function doPost(e) {<br>
 
                 if (rem <= 0) {
                     clearInterval(gameTimerInterval);
+                    isPlaying = false;
+                    window.removeEventListener('devicemotion', handleDeviceMotion);
+                    isMotionListenerAttached = false;
+
                     document.getElementById('game-timer').textContent = "0.0";
                     document.getElementById('stage-timer').textContent = "0.0";
+
+                    if (currentPlayer && activeRacers[currentPlayer.id]) {
+                        activeRacers[currentPlayer.id].score = currentScore;
+                        broadcastSyncMessage({
+                            type: 'SCORE_FINAL',
+                            empId: currentPlayer.id,
+                            score: currentScore
+                        });
+                    }
+
                     finishSimultaneousRace();
                 }
             }, 100);
@@ -4396,10 +4481,20 @@ function doPost(e) {<br>
                     clearInterval(gameTimerInterval);
                     document.getElementById('game-timer').textContent = "0.0";
                     document.getElementById('stage-timer').textContent = "0.0";
-                    // 700ms grace period so all final motion packets from mobile clients arrive before Host finalizes logs & Sheets
+
+                    // 1. Immediately send TIME_UP signal to all mobile players so their phones stop counting steps right now!
+                    broadcastSyncMessage({
+                        type: 'TIME_UP',
+                        heatId: raceState.heatId
+                    });
+
+                    // 2. Tallying phase: Show waiting banner on Stage and give 1500ms for all 4G mobile devices to report final confirmed score
+                    raceState.status = 'tallying';
+                    renderAllLiveViews();
+
                     setTimeout(() => {
                         finishSimultaneousRace();
-                    }, 700);
+                    }, 1500);
                 }
             }, 100);
         }
@@ -5107,6 +5202,14 @@ function doPost(e) {<br>
                 if (lobbyView) lobbyView.classList.add('hidden');
                 if (winnerOverlay) winnerOverlay.classList.add('hidden');
 
+            } else if (raceState.status === 'tallying') {
+                statusPill.textContent = "🏁 กำลังรวบรวมคะแนนสุดท้าย...";
+                statusPill.className = "bg-amber-400 text-slate-950 text-xs font-black px-2.5 py-0.5 rounded-full uppercase animate-pulse";
+                document.getElementById('stage-timer').textContent = "0.0";
+
+                if (lobbyView) lobbyView.classList.add('hidden');
+                if (winnerOverlay) winnerOverlay.classList.add('hidden');
+
             } else if (raceState.status === 'finished') {
                 statusPill.textContent = "🏁 จบการแข่งขัน - มอบรางวัล";
                 statusPill.className = "bg-emerald-500 text-slate-950 text-xs font-black px-2.5 py-0.5 rounded-full uppercase";
@@ -5222,6 +5325,13 @@ function doPost(e) {<br>
         function showMobileResultScreen() {
             document.getElementById('step-playing').classList.add('hidden');
             document.getElementById('step-result').classList.remove('hidden');
+
+            // Harmonize final score between local and activeRacers
+            if (currentPlayer && activeRacers[currentPlayer.id]) {
+                const finalScore = Math.max(currentScore, activeRacers[currentPlayer.id].score || 0);
+                currentScore = finalScore;
+                activeRacers[currentPlayer.id].score = finalScore;
+            }
 
             const racers = Object.values(activeRacers).sort((a, b) => b.score - a.score);
             const heatRank = racers.findIndex(r => r.empId === currentPlayer.id) + 1;
