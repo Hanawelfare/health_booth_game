@@ -1123,44 +1123,74 @@
     </main>
 
     <!-- ===================================================================== -->
-    <!-- MODAL: ASSIGN PRIZE TO WINNER                                         -->
+    <!-- MODAL: ANNOUNCE WINNER & ASSIGN PRIZE (AUTO-POPS ON ROUND FINISH)     -->
     <!-- ===================================================================== -->
-    <div id="prize-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="clay-card max-w-md w-full p-6 sm:p-7 border-4 border-white shadow-2xl">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="font-black text-lg text-slate-800 flex items-center gap-2">
-                    <span class="text-2xl">🎁</span> บันทึกการมอบรางวัล
-                </h3>
-                <button onclick="closePrizeModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition">
+    <div id="prize-modal" class="fixed inset-0 bg-slate-900/65 backdrop-blur-md z-50 hidden flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="clay-card max-w-lg w-full p-5 sm:p-7 border-4 border-white shadow-2xl my-auto animate-fade-in">
+            <!-- Header -->
+            <div class="flex justify-between items-center pb-3 border-b border-slate-200/80 mb-3">
+                <div class="flex items-center gap-2.5">
+                    <span class="text-3xl animate-bounce">🏆</span>
+                    <div>
+                        <h3 class="font-black text-lg sm:text-xl text-slate-800 leading-tight">
+                            ประกาศผลผู้ชนะ & บันทึกรางวัล
+                        </h3>
+                        <p class="text-[11px] text-teal-700 font-extrabold flex items-center gap-1 mt-0.5">
+                            <i class="fa-solid fa-circle-check text-emerald-500"></i> รอบแข่งขันเสร็จสิ้น • บันทึกของรางวัลที่จับได้
+                        </p>
+                    </div>
+                </div>
+                <button onclick="closePrizeModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition cursor-pointer" title="ปิดหน้าต่าง">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
             
-            <div class="bg-amber-50 border-2 border-amber-200 rounded-2xl p-3.5 mb-3 shadow-xs">
-                <p class="text-xs text-amber-700 font-extrabold" id="modal-winner-rank">อันดับที่ 1</p>
-                <p class="text-lg font-black text-slate-800" id="modal-winner-name">ชื่อพนักงาน</p>
-                <p class="text-xs text-slate-500 font-medium" id="modal-winner-dept">แผนก • คะแนน: 0</p>
+            <!-- Winner Profile Card -->
+            <div class="bg-gradient-to-r from-amber-50 via-yellow-50 to-amber-100/70 border-2 border-amber-300 rounded-2xl p-3.5 sm:p-4 mb-3 shadow-xs flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div id="modal-winner-avatar" class="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-yellow-500 text-slate-950 flex items-center justify-center text-2xl font-black shadow-sm shrink-0 border border-white">
+                        🥇
+                    </div>
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="bg-amber-400 text-amber-950 text-[10px] font-black px-2 py-0.5 rounded-full uppercase shadow-2xs" id="modal-winner-rank">
+                                อันดับที่ 1
+                            </span>
+                            <span class="text-[11px] font-black text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full shadow-2xs" id="modal-winner-score-badge">
+                                0 ก้าว
+                            </span>
+                        </div>
+                        <p class="text-base sm:text-lg font-black text-slate-800 truncate mt-0.5" id="modal-winner-name">
+                            ชื่อพนักงาน
+                        </p>
+                        <p class="text-xs text-slate-600 font-bold truncate" id="modal-winner-dept">
+                            แผนก • -
+                        </p>
+                    </div>
+                </div>
             </div>
 
-            <!-- Warning Alert if employee already received grand prize -->
-            <div id="modal-winner-warning" class="hidden mb-3 p-3.5 bg-amber-100/90 border-2 border-amber-400 rounded-2xl text-xs text-amber-950 shadow-xs">
+            <!-- Grand Prize Eligibility Status Badge (Never won vs Already won) -->
+            <div id="modal-winner-warning" class="mb-3.5 shadow-xs">
                 <!-- Injected via JS -->
             </div>
 
+            <!-- Prize Input & Quick-Select Chips -->
             <div class="space-y-3">
                 <div>
                     <div class="flex items-center justify-between mb-1">
                         <label class="block text-xs font-black text-slate-700">
-                            🔍 ค้นหาหรือพิมพ์ระบุชื่อรางวัล:
+                            🎁 ค้นหาหรือพิมพ์ของรางวัลที่พนักงานจับฉลากได้:
                         </label>
                         <button type="button" onclick="closePrizeModal(); openWheelSettingsModal();" class="text-[11px] text-teal-700 hover:text-teal-900 font-extrabold flex items-center gap-1 cursor-pointer">
-                            <i class="fa-solid fa-pen-to-square"></i> แก้ไข/เพิ่มรายการของรางวัล
+                            <i class="fa-solid fa-pen-to-square"></i> ตั้งค่าสต็อกของรางวัล
                         </button>
                     </div>
                     <div class="relative">
-                        <input type="text" id="prize-name-input" oninput="filterModalPrizeList(this.value)" placeholder="พิมพ์ค้นหา หรือพิมพ์ชื่อรางวัลที่จับได้ที่นี่..." 
-                            class="w-full pl-4 pr-10 py-2.5 bg-slate-50 border-2 border-slate-200 rounded-2xl text-sm font-bold focus:outline-none focus:border-teal-500 shadow-inner">
-                        <button type="button" onclick="document.getElementById('prize-name-input').value=''; filterModalPrizeList('');" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 text-xs cursor-pointer" title="ล้างข้อความ">
+                        <input type="text" id="prize-name-input" oninput="filterModalPrizeList(this.value)" 
+                            placeholder="แตะเลือกปุ่มรางวัลด้านล่าง หรือพิมพ์ชื่อรางวัลที่นี่..." 
+                            class="w-full pl-4 pr-10 py-2.5 bg-slate-50 border-2 border-slate-300 rounded-2xl text-sm font-black text-slate-800 focus:outline-none focus:border-teal-500 shadow-inner">
+                        <button type="button" onclick="document.getElementById('prize-name-input').value=''; filterModalPrizeList('');" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 text-xs cursor-pointer p-1" title="ล้างข้อความ">
                             <i class="fa-solid fa-eraser"></i>
                         </button>
                     </div>
@@ -1169,24 +1199,27 @@
                 <!-- Dynamic Clickable Prize Chips (Filtered live via search) -->
                 <div>
                     <div class="flex items-center justify-between mb-1.5">
-                        <p class="text-[11px] font-extrabold text-slate-600">
-                            แตะเพื่อเลือกของรางวัลที่พนักงานจับฉลากได้:
+                        <p class="text-[11px] font-extrabold text-slate-600 flex items-center gap-1">
+                            <span>แตะเพื่อเลือกของรางวัลที่จับได้:</span>
                         </p>
-                        <span class="text-[10px] text-teal-700 font-bold">* แตะปุ่มเพื่อเลือก / แตะซ้ำเพื่อยืนยัน</span>
+                        <span class="text-[10px] text-teal-700 font-bold">* แตะ 1 ครั้งเพื่อเลือก / แตะซ้ำเพื่อยืนยัน</span>
                     </div>
-                    <div id="modal-prize-chips-container" class="flex flex-wrap gap-1.5 max-h-44 overflow-y-auto p-2 bg-slate-50/80 rounded-2xl border border-slate-200 shadow-inner">
+                    <div id="modal-prize-chips-container" class="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-2.5 bg-slate-50/90 rounded-2xl border border-slate-200 shadow-inner">
                         <!-- Populated dynamically via JS -->
                     </div>
                     <p class="text-[10px] text-slate-400 mt-1">
-                        💡 เมื่อแตะเลือกรางวัลแล้ว ให้กดปุ่มสีเขียว <b>"ยืนยันมอบรางวัล"</b> ด้านล่าง (หรือแตะปุ่มรางวัลที่เลือกซ้ำอีกครั้ง) เพื่อบันทึกค่ะ
+                        💡 เมื่อแตะเลือกรางวัลแล้ว ให้กดปุ่มสีเขียว <b>"ยืนยันบันทึกการมอบรางวัล"</b> ด้านล่าง เพื่อบันทึกลงระบบและตัดสต็อกค่ะ
                     </p>
                 </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-3 mt-5 pt-3 border-t border-slate-100">
-                <button onclick="closePrizeModal()" class="btn-clay-white py-3 font-bold text-sm cursor-pointer">ยกเลิก</button>
-                <button id="modal-confirm-prize-btn" onclick="savePrizeAssignment()" class="btn-clay-teal py-3 font-black text-sm cursor-pointer shadow-md flex items-center justify-center gap-1.5 transition">
-                    <i class="fa-solid fa-check"></i> ยืนยันมอบรางวัล
+            <!-- Footer Action Buttons -->
+            <div class="grid grid-cols-2 gap-3 mt-4 pt-3 border-t border-slate-100">
+                <button onclick="closePrizeModal()" class="btn-clay-white py-3 font-bold text-xs sm:text-sm cursor-pointer">
+                    ปิดหน้าต่าง
+                </button>
+                <button id="modal-confirm-prize-btn" onclick="savePrizeAssignment()" class="btn-clay-teal py-3 font-black text-xs sm:text-sm cursor-pointer shadow-md flex items-center justify-center gap-1.5 transition">
+                    <i class="fa-solid fa-check"></i> ยืนยันบันทึกการมอบรางวัล
                 </button>
             </div>
         </div>
@@ -4793,13 +4826,13 @@ function doPost(e) {<br>
                 renderAllLiveViews();
                 renderAdminDashboard();
 
-                // Auto-open Prize Modal on Host/Admin screen for the Rank 1 winner to record their lucky draw prize
+                // Auto-open Announcement & Prize Modal on Host/Admin screen for the Winner to record their prize
                 if (sortedHeatRacers.length > 0 && isHostLogger) {
-                    const winner1 = sortedHeatRacers[0];
-                    if (winner1 && !winner1.isBot) {
-                        setTimeout(() => {
-                            openPrizeModal(winner1.empId, 1);
-                        }, 600);
+                    const humanWinner = sortedHeatRacers.find(r => !r.isBot);
+                    const winnerToAward = humanWinner || sortedHeatRacers[0];
+                    if (winnerToAward) {
+                        const rankToAward = sortedHeatRacers.indexOf(winnerToAward) + 1;
+                        openPrizeModal(winnerToAward.empId, rankToAward, winnerToAward);
                     }
                 }
 
@@ -5870,79 +5903,143 @@ function doPost(e) {<br>
             }
         };
 
-        // Prize Modal Functions
-        window.openPrizeModal = function(empId, rank) {
-            const standings = getAggregatedStandings();
-            let winner = standings.find(s => s.empId === empId);
-            if (!winner && activeRacers[empId]) {
+        // Prize Modal Functions (Winner Announcement & Prize Awarding Screen)
+        window.openPrizeModal = function(empId, rank = 1, winnerObj = null) {
+            const cleanId = String(empId || '').trim().replace(/^'/, '');
+            const strippedKey = cleanId.replace(/^0+/, '') || cleanId;
+
+            let winner = winnerObj;
+            if (!winner) {
+                const standings = getAggregatedStandings();
+                winner = standings.find(s => {
+                    const sId = String(s.empId || '').trim().replace(/^'/, '');
+                    return sId === cleanId || sId.replace(/^0+/, '') === strippedKey;
+                });
+            }
+            if (!winner && activeRacers[cleanId]) {
                 winner = {
-                    empId: empId,
-                    name: activeRacers[empId].name,
-                    dept: activeRacers[empId].dept,
-                    bestScore: activeRacers[empId].score
+                    empId: cleanId,
+                    name: activeRacers[cleanId].name,
+                    dept: activeRacers[cleanId].dept,
+                    bestScore: activeRacers[cleanId].score,
+                    avatar: activeRacers[cleanId].avatar
                 };
             }
             if (!winner) {
-                const lastLog = [...playLogs].reverse().find(l => l.empId === empId);
+                const lastLog = [...playLogs].reverse().find(l => {
+                    const lId = String(l.empId || '').trim().replace(/^'/, '');
+                    return lId === cleanId || lId.replace(/^0+/, '') === strippedKey;
+                });
                 if (lastLog) {
                     winner = {
-                        empId: empId,
+                        empId: cleanId,
                         name: lastLog.name,
                         dept: lastLog.dept,
                         bestScore: lastLog.score
                     };
                 }
             }
-            if (!winner) return;
+            if (!winner && employeeDB[cleanId]) {
+                winner = {
+                    empId: cleanId,
+                    name: employeeDB[cleanId].name,
+                    dept: employeeDB[cleanId].dept,
+                    bestScore: 0
+                };
+            }
+            if (!winner) {
+                winner = {
+                    empId: cleanId,
+                    name: 'พนักงานรหัส ' + cleanId,
+                    dept: '-',
+                    bestScore: 0
+                };
+            }
 
-            selectedWinnerForPrize = { empId, rank };
-            document.getElementById('modal-winner-rank').textContent = `ผู้ชนะอันดับที่ ${rank}`;
-            document.getElementById('modal-winner-name').textContent = `${winner.name} (${winner.empId})`;
-            document.getElementById('modal-winner-dept').textContent = `${winner.dept} • คะแนน: ${winner.bestScore || 0}`;
-            
-            // Display Warning if already received grand prize, or gold banner for pending lucky draw
+            selectedWinnerForPrize = {
+                empId: cleanId,
+                rank: rank || 1,
+                name: winner.name,
+                dept: winner.dept,
+                score: winner.bestScore || winner.score || 0
+            };
+
+            const rankEl = document.getElementById('modal-winner-rank');
+            if (rankEl) rankEl.textContent = `อันดับที่ ${rank || 1}`;
+            const nameEl = document.getElementById('modal-winner-name');
+            if (nameEl) nameEl.textContent = `${winner.name} (${cleanId})`;
+            const deptEl = document.getElementById('modal-winner-dept');
+            if (deptEl) deptEl.textContent = `${winner.dept || '-'}`;
+            const scoreBadgeEl = document.getElementById('modal-winner-score-badge');
+            if (scoreBadgeEl) {
+                const sc = winner.bestScore || winner.score || 0;
+                scoreBadgeEl.textContent = `${sc} ก้าว ⚡`;
+            }
+            const avatarEl = document.getElementById('modal-winner-avatar');
+            if (avatarEl) {
+                avatarEl.textContent = (rank === 1) ? '🥇' : (rank === 2 ? '🥈' : (rank === 3 ? '🥉' : '🎖️'));
+            }
+
+            // Check Grand Prize Eligibility
             const warningEl = document.getElementById('modal-winner-warning');
             const todayStr = new Date().toLocaleDateString('th-TH');
-            const eligibility = checkGrandPrizeEligibility(empId, todayStr);
-            const existing = prizesAwarded[empId];
-            const hasActualCustomPrize = existing && existing.prizeName && !existing.isPendingLuckyDraw && existing.prizeName !== gameRules.rank1PrizeName && !existing.prizeName.includes('สิทธิ์จับฉลาก');
+            const eligibility = checkGrandPrizeEligibility(cleanId, todayStr);
+            const existing = prizesAwarded[cleanId] || prizesAwarded[strippedKey];
+            const hasActualCustomPrize = existing && existing.prizeName && !existing.isPendingLuckyDraw && 
+                                          existing.prizeName !== gameRules.rank1PrizeName && 
+                                          !existing.prizeName.includes('สิทธิ์จับฉลาก');
 
             if (warningEl) {
                 if (!eligibility.eligible) {
-                    warningEl.classList.remove('hidden');
-                    warningEl.className = "mb-3 p-3.5 bg-amber-100/90 border-2 border-amber-400 rounded-2xl text-xs text-amber-950 shadow-xs";
+                    // ALREADY WON GRAND PRIZE TODAY -> Clear Warning Badge
+                    warningEl.className = "p-3.5 bg-amber-50 border-2 border-amber-400 rounded-2xl text-xs text-amber-950 shadow-xs";
                     warningEl.innerHTML = `
                         <div class="flex items-start gap-2.5">
                             <span class="text-2xl shrink-0">⚠️</span>
-                            <div>
-                                <p class="font-black text-amber-950 text-xs sm:text-sm">แจ้งเตือน: พนักงานท่านนี้เคยได้รับรางวัลใหญ่แล้ว!</p>
-                                <p class="text-[11px] text-amber-900 font-bold mt-0.5">${eligibility.reason}</p>
-                                <p class="text-[10px] text-slate-600 mt-1">ตามกติกาจำกัด 1 สิทธิ์/วัน หากต้องการมอบเป็นกรณีพิเศษให้เลือกรางวัลแล้วกดยืนยัน หรือเปลี่ยนเป็น "${gameRules.consolationPrizeName}" ค่ะ</p>
-                            </div>
-                        </div>
-                    `;
-                } else if (rank === 1) {
-                    warningEl.classList.remove('hidden');
-                    warningEl.className = "mb-3 p-3.5 bg-gradient-to-r from-amber-50 to-yellow-100 border-2 border-amber-300 rounded-2xl text-xs text-amber-950 shadow-xs";
-                    warningEl.innerHTML = `
-                        <div class="flex items-start gap-2.5">
-                            <span class="text-2xl shrink-0">👑 🎁</span>
-                            <div>
-                                <p class="font-black text-amber-950 text-xs sm:text-sm">ผู้ชนะเลิศได้รับ "สิทธิ์จับฉลากรางวัลใหญ่"</p>
-                                <p class="text-[11px] text-amber-900 font-bold mt-0.5">👉 ให้พนักงานล้วงจับสลากในกล่อง แล้วคลิกเลือกของรางวัลที่จับได้ด้านล่างเพื่อบันทึกและตัดสต็อกค่ะ</p>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <span class="bg-amber-500 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full uppercase shadow-2xs">สถานะ: เคยได้รับรางวัลใหญ่แล้ว</span>
+                                    <span class="font-black text-amber-950 text-xs sm:text-sm">สิทธิ์รางวัลใหญ่ถูกใช้ไปแล้ว</span>
+                                </div>
+                                <p class="text-[11px] text-amber-900 font-bold mt-1">
+                                    📌 ประวัติ: ${eligibility.reason}
+                                </p>
+                                <p class="text-[10px] text-slate-600 mt-0.5 leading-relaxed">
+                                    ตามกติกาสิทธิ์รางวัลใหญ่จำกัด 1 สิทธิ์/ท่าน/วัน แนะนำให้มอบรางวัลเป็น <b>"ขนมขบเคี้ยว / ของว่างแสนอร่อย"</b> หรือรางวัลพิเศษตามดุลยพินิจแอดมินค่ะ
+                                </p>
+                                <div class="mt-2 flex items-center gap-2">
+                                    <button type="button" onclick="selectPrizeInModal('${gameRules.consolationPrizeName.replace(/'/g, "\\'")}')" 
+                                        class="btn-clay-teal py-1.5 px-3 text-xs font-black flex items-center gap-1.5 shadow-xs cursor-pointer">
+                                        <span>🍿 ปรับเป็นมอบรางวัลขนมทันที</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     `;
                 } else {
-                    warningEl.classList.add('hidden');
-                    warningEl.innerHTML = '';
+                    // NEVER WON GRAND PRIZE TODAY -> Vibrant Green Badge
+                    warningEl.className = "p-3.5 bg-emerald-50 border-2 border-emerald-400 rounded-2xl text-xs text-emerald-950 shadow-xs";
+                    warningEl.innerHTML = `
+                        <div class="flex items-start gap-2.5">
+                            <span class="text-2xl shrink-0">🟢 🎟️</span>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <span class="bg-emerald-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase shadow-2xs">มีสิทธิ์จับฉลาก</span>
+                                    <span class="font-black text-emerald-950 text-xs sm:text-sm">ยังไม่เคยได้รับรางวัลใหญ่ในวันนี้ ✨</span>
+                                </div>
+                                <p class="text-[11px] text-emerald-900 font-bold mt-1 leading-relaxed">
+                                    👉 ให้พนักงาน <b>ล้วงจับสลากของรางวัลในกล่อง 1 ครั้ง</b> แล้วแอดมินแตะเลือกของรางวัลที่จับได้ด้านล่างเพื่อบันทึกและตัดสต็อกค่ะ
+                                </p>
+                            </div>
+                        </div>
+                    `;
                 }
             }
 
             const prizeInput = document.getElementById('prize-name-input');
             if (prizeInput) {
                 prizeInput.value = hasActualCustomPrize ? existing.prizeName : '';
-                prizeInput.placeholder = 'คลิกเลือกหรือพิมพ์ของรางวัลที่จับได้ (เช่น แก้วน้ำเยติ)...';
+                prizeInput.placeholder = 'แตะเลือกปุ่มรางวัลด้านล่าง หรือพิมพ์ของรางวัลที่จับได้...';
             }
             renderModalPrizeChips('');
             document.getElementById('prize-modal').classList.remove('hidden');
@@ -5980,40 +6077,71 @@ function doPost(e) {<br>
             if (nameEl) nameEl.textContent = `${emp.name} (${targetId})`;
             const deptEl = document.getElementById('modal-winner-dept');
             if (deptEl) deptEl.textContent = `${emp.dept} • กิจกรรมแข่งขัน / หน้าบูธ`;
+            const scoreBadgeEl = document.getElementById('modal-winner-score-badge');
+            if (scoreBadgeEl) scoreBadgeEl.textContent = 'กิจกรรมหน้าบูธ 🎯';
+            const avatarEl = document.getElementById('modal-winner-avatar');
+            if (avatarEl) avatarEl.textContent = '🎯';
 
             // Display Warning if already received grand prize
             const warningEl = document.getElementById('modal-winner-warning');
             const todayStr = new Date().toLocaleDateString('th-TH');
             const eligibility = checkGrandPrizeEligibility(targetId, todayStr);
+            const existing = prizesAwarded[targetId];
+            const hasActualCustomPrize = existing && existing.prizeName && !existing.isPendingLuckyDraw && 
+                                          existing.prizeName !== gameRules.rank1PrizeName && 
+                                          !existing.prizeName.includes('สิทธิ์จับฉลาก');
+
             if (warningEl) {
                 if (!eligibility.eligible) {
-                    warningEl.classList.remove('hidden');
-                    warningEl.className = "mb-3 p-3.5 bg-amber-100/90 border-2 border-amber-400 rounded-2xl text-xs text-amber-950 shadow-xs";
+                    warningEl.className = "p-3.5 bg-amber-50 border-2 border-amber-400 rounded-2xl text-xs text-amber-950 shadow-xs";
                     warningEl.innerHTML = `
                         <div class="flex items-start gap-2.5">
                             <span class="text-2xl shrink-0">⚠️</span>
-                            <div>
-                                <p class="font-black text-amber-950 text-xs sm:text-sm">แจ้งเตือน: พนักงานท่านนี้เคยได้รับรางวัลใหญ่แล้ว!</p>
-                                <p class="text-[11px] text-amber-900 font-bold mt-0.5">${eligibility.reason}</p>
-                                <p class="text-[10px] text-slate-600 mt-1">ตามกติกาจำกัด 1 สิทธิ์/วัน หากต้องการมอบเป็นกรณีพิเศษให้เลือกรางวัลแล้วกดยืนยัน หรือเปลี่ยนเป็น "${gameRules.consolationPrizeName}" ค่ะ</p>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <span class="bg-amber-500 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full uppercase shadow-2xs">สถานะ: เคยได้รับรางวัลใหญ่แล้ว</span>
+                                    <span class="font-black text-amber-950 text-xs sm:text-sm">สิทธิ์รางวัลใหญ่ถูกใช้ไปแล้ว</span>
+                                </div>
+                                <p class="text-[11px] text-amber-900 font-bold mt-1">
+                                    📌 ประวัติ: ${eligibility.reason}
+                                </p>
+                                <p class="text-[10px] text-slate-600 mt-0.5 leading-relaxed">
+                                    ตามกติกาสิทธิ์รางวัลใหญ่จำกัด 1 สิทธิ์/ท่าน/วัน แนะนำให้มอบรางวัลเป็น <b>"ขนมขบเคี้ยว / ของว่างแสนอร่อย"</b> หรือรางวัลพิเศษตามดุลยพินิจแอดมินค่ะ
+                                </p>
+                                <div class="mt-2 flex items-center gap-2">
+                                    <button type="button" onclick="selectPrizeInModal('${gameRules.consolationPrizeName.replace(/'/g, "\\'")}')" 
+                                        class="btn-clay-teal py-1.5 px-3 text-xs font-black flex items-center gap-1.5 shadow-xs cursor-pointer">
+                                        <span>🍿 ปรับเป็นมอบรางวัลขนมทันที</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     `;
                 } else {
-                    warningEl.classList.add('hidden');
-                    warningEl.innerHTML = '';
+                    warningEl.className = "p-3.5 bg-emerald-50 border-2 border-emerald-400 rounded-2xl text-xs text-emerald-950 shadow-xs";
+                    warningEl.innerHTML = `
+                        <div class="flex items-start gap-2.5">
+                            <span class="text-2xl shrink-0">🟢 🎯</span>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <span class="bg-emerald-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase shadow-2xs">มีสิทธิ์รางวัลใหญ่</span>
+                                    <span class="font-black text-emerald-950 text-xs sm:text-sm">ยังไม่เคยได้รับรางวัลใหญ่ในวันนี้ ✨</span>
+                                </div>
+                                <p class="text-[11px] text-emerald-900 font-bold mt-1 leading-relaxed">
+                                    👉 พนักงานชนะกิจกรรมหน้าบูธ ให้จับฉลากแล้วแตะเลือกของรางวัลด้านล่างเพื่อบันทึกและตัดสต็อกค่ะ
+                                </p>
+                            </div>
+                        </div>
+                    `;
                 }
             }
 
-            const existing = prizesAwarded[targetId];
-            const hasActualCustomPrize = existing && existing.prizeName && !existing.isPendingLuckyDraw && existing.prizeName !== gameRules.rank1PrizeName && !existing.prizeName.includes('สิทธิ์จับฉลาก');
             const input = document.getElementById('prize-name-input');
             if (input) {
                 input.value = hasActualCustomPrize ? existing.prizeName : '';
-                input.placeholder = 'คลิกเลือกหรือพิมพ์ของรางวัลที่จับได้ (เช่น แก้วน้ำเยติ)...';
+                input.placeholder = 'แตะเลือกปุ่มรางวัลด้านล่าง หรือพิมพ์ของรางวัลที่จับได้...';
             }
             renderModalPrizeChips('');
-
             document.getElementById('prize-modal').classList.remove('hidden');
         };
 
@@ -6025,7 +6153,7 @@ function doPost(e) {<br>
             // All physical prizes in booth lucky draw + consolation snack
             let list = [
                 ...wheelPrizes,
-                { id: 'conso', name: gameRules.consolationPrizeName, icon: '🍬', stock: -1 }
+                { id: 'conso', name: gameRules.consolationPrizeName, icon: '🍿', stock: -1 }
             ];
 
             if (q) {
@@ -6042,24 +6170,25 @@ function doPost(e) {<br>
                 return;
             }
 
-            const currentVal = document.getElementById('prize-name-input')?.value || '';
+            const currentVal = (document.getElementById('prize-name-input')?.value || '').trim().toLowerCase();
 
             container.innerHTML = list.map(p => {
-                const isSelected = currentVal.trim() === p.name.trim();
+                const isSelected = currentVal === p.name.trim().toLowerCase();
                 const stockNum = Number(p.stock);
                 const hasStock = stockNum > 0 || stockNum === -1 || p.stock === undefined || p.stock === '';
                 const stockStr = (stockNum > 0) ? ` (เหลือ ${stockNum})` : (stockNum === 0 ? ' (หมด)' : '');
+                const safeName = p.name.replace(/'/g, "\\'");
 
                 return `
-                    <button type="button" onclick="selectPrizeInModal('${p.name.replace(/'/g, "\\'")}')" 
-                        class="text-xs font-bold px-3 py-1.5 rounded-xl border transition shadow-2xs flex items-center gap-1.5 cursor-pointer ${
+                    <button type="button" onclick="selectPrizeInModal('${safeName}')" 
+                        class="text-xs sm:text-sm font-bold px-3.5 py-2 rounded-xl border-2 transition shadow-xs flex items-center gap-1.5 cursor-pointer ${
                             isSelected 
-                                ? 'bg-amber-400 text-amber-950 border-amber-500 ring-2 ring-amber-300 font-black' 
-                                : (!hasStock ? 'bg-slate-100 text-slate-400 border-slate-200 opacity-60' : 'bg-white hover:bg-amber-50 text-slate-800 border-amber-200')
+                                ? 'bg-amber-400 text-amber-950 border-amber-500 ring-2 ring-amber-400 font-black shadow-md scale-102' 
+                                : (!hasStock ? 'bg-slate-100 text-slate-400 border-slate-200 opacity-60' : 'bg-white hover:bg-amber-50 text-slate-800 border-slate-200')
                         }">
-                        <span>${p.icon || '🎁'}</span>
-                        <span>${p.name}</span>
-                        <span class="text-[10px] text-slate-500 font-normal">${stockStr}</span>
+                        <span class="text-base">${p.icon || '🎁'}</span>
+                        <span class="font-extrabold">${p.name}</span>
+                        <span class="text-[11px] font-bold ${stockNum > 0 ? 'text-teal-700' : 'text-slate-400'}">${stockStr}</span>
                     </button>
                 `;
             }).join('');
@@ -6080,7 +6209,7 @@ function doPost(e) {<br>
             }
 
             if (input) input.value = prizeName;
-            renderModalPrizeChips(prizeName);
+            renderModalPrizeChips('');
 
             // Animate and highlight the green confirm button so the user knows what to click next
             const confirmBtn = document.getElementById('modal-confirm-prize-btn');
@@ -6130,13 +6259,40 @@ function doPost(e) {<br>
             }
 
             // Update prize in playLogs for this employee or add new log for external booth activity
-            const lastWinnerLog = playLogs.slice().reverse().find(l => l.empId === selectedWinnerForPrize.empId && (l.isPendingLuckyDraw || l.heatRank === 1));
+            const lastWinnerLog = playLogs.slice().reverse().find(l => {
+                const lId = String(l.empId || '').trim().replace(/^'/, '');
+                const tId = String(selectedWinnerForPrize.empId || '').trim().replace(/^'/, '');
+                return (lId === tId || lId.replace(/^0+/, '') === tId.replace(/^0+/, '')) && (l.isPendingLuckyDraw || l.heatRank === 1);
+            });
             if (lastWinnerLog && !selectedWinnerForPrize.isExternalGame) {
                 lastWinnerLog.prize = prizeName;
                 lastWinnerLog.isPendingLuckyDraw = false;
                 try {
                     localStorage.setItem('health_sprint_play_logs', JSON.stringify(playLogs));
                 } catch(e) {}
+
+                // Send prize update to Google Sheets
+                if (googleScriptUrl) {
+                    fetch(googleScriptUrl, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'UPDATE_PRIZE',
+                            heatId: lastWinnerLog.heatId,
+                            roundId: lastWinnerLog.roundId,
+                            empId: lastWinnerLog.empIdText || ("'" + lastWinnerLog.empId),
+                            empIdRaw: lastWinnerLog.empId,
+                            name: lastWinnerLog.name,
+                            dept: lastWinnerLog.dept,
+                            score: lastWinnerLog.score,
+                            heatRank: lastWinnerLog.heatRank,
+                            prize: prizeName,
+                            timestamp: lastWinnerLog.timestamp,
+                            dateTime: lastWinnerLog.dateTime
+                        })
+                    }).catch(e => console.warn("Google Sheets prize update warn:", e));
+                }
             } else {
                 // External booth game or standalone prize award
                 const fullDateTime = todayDateStr + ' ' + timeStr;
