@@ -1442,30 +1442,61 @@ function doGet(e) {<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if (lEmpId) {<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;var dateVal = lRow[0];<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;var dateStr = (dateVal instanceof Date) ? Utilities.formatDate(dateVal, "Asia/Bangkok", "dd/MM/yyyy HH:mm:ss") : String(dateVal || '');<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;logs.push({ roundId: j, dateTime: dateStr, timestamp: dateStr.split(' ')[1] || dateStr, empId: lEmpId, name: String(lRow[2] || '').trim(), dept: String(lRow[3] || '-').trim(), score: Number(lRow[4]) || 0 });<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;logs.push({ roundId: j, dateTime: dateStr, timestamp: dateStr.split(' ')[1] || dateStr, empId: lEmpId, name: String(lRow[2] || '').trim(), dept: String(lRow[3] || '-').trim(), score: Number(lRow[4]) || 0, prize: String(lRow[5] || '').trim() });<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
 &nbsp;&nbsp;&nbsp;&nbsp;}<br>
 &nbsp;&nbsp;}<br>
 &nbsp;&nbsp;return ContentService.createTextOutput(JSON.stringify({ status: "success", count: Object.keys(employees).length, employees: employees, logs: logs })).setMimeType(ContentService.MimeType.JSON);<br>
 }<br>
 <br>
-// 2. รับผลการแข่งจากจอหลัก บันทึกลงชีต GameLogs (ล็อกเลข 0 นำหน้า พร้อมป้องกันบันทึกซ้ำ)<br>
+// 2. รับผลการแข่ง & ของรางวัล บันทึกลงชีต GameLogs (คอลัมน์ A ถึง F: วัน-เวลา, รหัส, ชื่อ, แผนก, คะแนน, ของรางวัล)<br>
 function doPost(e) {<br>
 &nbsp;&nbsp;try {<br>
 &nbsp;&nbsp;&nbsp;&nbsp;var d = JSON.parse(e.postData.contents);<br>
 &nbsp;&nbsp;&nbsp;&nbsp;var ss = SpreadsheetApp.getActiveSpreadsheet();<br>
 &nbsp;&nbsp;&nbsp;&nbsp;var s = ss.getSheetByName("GameLogs") || ss.getActiveSheet();<br>
-&nbsp;&nbsp;&nbsp;&nbsp;var empId = "'" + String(d.empIdRaw || d.empId || '').replace(/^'/, '');<br>
+&nbsp;&nbsp;&nbsp;&nbsp;var cleanEmpId = String(d.empIdRaw || d.empId || '').trim().replace(/^'/, '');<br>
+&nbsp;&nbsp;&nbsp;&nbsp;var empId = "'" + cleanEmpId;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;var prize = String(d.prize || '').trim();<br>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;// กรณีอัปเดตของรางวัลที่จับได้ลงแถวเดิม<br>
+&nbsp;&nbsp;&nbsp;&nbsp;if (d.action === 'UPDATE_PRIZE') {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;var lastRow = s.getLastRow();<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;for (var r = lastRow; r >= 2; r--) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;var rowEmpId = String(s.getRange(r, 2).getValue()).trim().replace(/^'/, '');<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if (rowEmpId === cleanEmpId) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;s.getRange(r, 6).setValue(prize);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return ContentService.createTextOutput(JSON.stringify({ status: 'success', action: 'updated_prize', row: r })).setMimeType(ContentService.MimeType.JSON);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;// กรณีแก้ไขคะแนนรอบแข่ง (Score Correction)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;if (d.note === 'SCORE_CORRECTION') {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;var lastRow = s.getLastRow();<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;for (var r = lastRow; r >= 2; r--) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;var rowEmpId = String(s.getRange(r, 2).getValue()).trim().replace(/^'/, '');<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if (rowEmpId === cleanEmpId) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;s.getRange(r, 5).setValue(d.score);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if (prize) s.getRange(r, 6).setValue(prize);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return ContentService.createTextOutput(JSON.stringify({ status: 'success', action: 'updated_score', row: r })).setMimeType(ContentService.MimeType.JSON);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;// ป้องกันบันทึกซ้ำซ้อนภายใน 3 วินาที<br>
 &nbsp;&nbsp;&nbsp;&nbsp;var lastRow = s.getLastRow();<br>
 &nbsp;&nbsp;&nbsp;&nbsp;if (lastRow > 1) {<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;var lastEmpId = String(s.getRange(lastRow, 2).getValue()).replace(/^'/, '');<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;var lastDate = new Date(s.getRange(lastRow, 1).getValue());<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;var now = new Date();<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if (lastEmpId === String(d.empIdRaw || d.empId || '').replace(/^'/, '') && ((now.getTime() - lastDate.getTime()) / 1000) < 3) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if (lastEmpId === cleanEmpId && ((now.getTime() - lastDate.getTime()) / 1000) < 3) {<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return ContentService.createTextOutput(JSON.stringify({status:'ignored_duplicate'})).setMimeType(ContentService.MimeType.JSON);<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
 &nbsp;&nbsp;&nbsp;&nbsp;}<br>
-&nbsp;&nbsp;&nbsp;&nbsp;s.appendRow([new Date(), empId, d.name, d.dept, d.score]);<br>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;// บันทึกผลรอบใหม่ลง 6 คอลัมน์ (A: วัน-เวลา, B: รหัส, C: ชื่อ, D: แผนก, E: คะแนน, F: ของรางวัล)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;s.appendRow([new Date(), empId, d.name, d.dept, d.score, prize]);<br>
 &nbsp;&nbsp;&nbsp;&nbsp;return ContentService.createTextOutput(JSON.stringify({status:'success'})).setMimeType(ContentService.MimeType.JSON);<br>
 &nbsp;&nbsp;} catch (err) {<br>
 &nbsp;&nbsp;&nbsp;&nbsp;return ContentService.createTextOutput(JSON.stringify({status:'error', message: err.toString()})).setMimeType(ContentService.MimeType.JSON);<br>
@@ -1560,7 +1591,7 @@ function doGet(e) {<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if (lEmpId) {<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;var dateVal = lRow[0];<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;var dateStr = (dateVal instanceof Date) ? Utilities.formatDate(dateVal, "Asia/Bangkok", "dd/MM/yyyy HH:mm:ss") : String(dateVal || '');<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;logs.push({ roundId: j, dateTime: dateStr, timestamp: dateStr.split(' ')[1] || dateStr, empId: lEmpId, name: String(lRow[2] || '').trim(), dept: String(lRow[3] || '-').trim(), score: Number(lRow[4]) || 0 });<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;logs.push({ roundId: j, dateTime: dateStr, timestamp: dateStr.split(' ')[1] || dateStr, empId: lEmpId, name: String(lRow[2] || '').trim(), dept: String(lRow[3] || '-').trim(), score: Number(lRow[4]) || 0, prize: String(lRow[5] || '').trim() });<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
 &nbsp;&nbsp;&nbsp;&nbsp;}<br>
 &nbsp;&nbsp;}<br>
@@ -1572,8 +1603,44 @@ function doPost(e) {<br>
 &nbsp;&nbsp;&nbsp;&nbsp;var d = JSON.parse(e.postData.contents);<br>
 &nbsp;&nbsp;&nbsp;&nbsp;var ss = SpreadsheetApp.getActiveSpreadsheet();<br>
 &nbsp;&nbsp;&nbsp;&nbsp;var s = ss.getSheetByName("GameLogs") || ss.getActiveSheet();<br>
-&nbsp;&nbsp;&nbsp;&nbsp;var empId = "'" + String(d.empIdRaw || d.empId || '').replace(/^'/, '');<br>
-&nbsp;&nbsp;&nbsp;&nbsp;s.appendRow([new Date(), empId, d.name, d.dept, d.score]);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;var cleanEmpId = String(d.empIdRaw || d.empId || '').trim().replace(/^'/, '');<br>
+&nbsp;&nbsp;&nbsp;&nbsp;var empId = "'" + cleanEmpId;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;var prize = String(d.prize || '').trim();<br>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;if (d.action === 'UPDATE_PRIZE') {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;var lastRow = s.getLastRow();<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;for (var r = lastRow; r >= 2; r--) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;var rowEmpId = String(s.getRange(r, 2).getValue()).trim().replace(/^'/, '');<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if (rowEmpId === cleanEmpId) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;s.getRange(r, 6).setValue(prize);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return ContentService.createTextOutput(JSON.stringify({ status: 'success', action: 'updated_prize', row: r })).setMimeType(ContentService.MimeType.JSON);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;if (d.note === 'SCORE_CORRECTION') {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;var lastRow = s.getLastRow();<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;for (var r = lastRow; r >= 2; r--) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;var rowEmpId = String(s.getRange(r, 2).getValue()).trim().replace(/^'/, '');<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if (rowEmpId === cleanEmpId) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;s.getRange(r, 5).setValue(d.score);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if (prize) s.getRange(r, 6).setValue(prize);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return ContentService.createTextOutput(JSON.stringify({ status: 'success', action: 'updated_score', row: r })).setMimeType(ContentService.MimeType.JSON);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;var lastRow = s.getLastRow();<br>
+&nbsp;&nbsp;&nbsp;&nbsp;if (lastRow > 1) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;var lastEmpId = String(s.getRange(lastRow, 2).getValue()).replace(/^'/, '');<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;var lastDate = new Date(s.getRange(lastRow, 1).getValue());<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;var now = new Date();<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if (lastEmpId === cleanEmpId && ((now.getTime() - lastDate.getTime()) / 1000) < 3) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return ContentService.createTextOutput(JSON.stringify({status:'ignored_duplicate'})).setMimeType(ContentService.MimeType.JSON);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;s.appendRow([new Date(), empId, d.name, d.dept, d.score, prize]);<br>
 &nbsp;&nbsp;&nbsp;&nbsp;return ContentService.createTextOutput(JSON.stringify({status:'success'})).setMimeType(ContentService.MimeType.JSON);<br>
 &nbsp;&nbsp;} catch (err) {<br>
 &nbsp;&nbsp;&nbsp;&nbsp;return ContentService.createTextOutput(JSON.stringify({status:'error', message: err.toString()})).setMimeType(ContentService.MimeType.JSON);<br>
