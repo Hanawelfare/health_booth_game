@@ -491,7 +491,7 @@
                         <span>เริ่มเกมสำหรับกลุ่มถัดไป (Next Heat)</span>
                     </button>
                     <p class="text-[11px] text-teal-200 mt-2">
-                        * เมื่อกดปุ่มนี้ จอใหญ่จะสลับกลับมาแสดง QR Code เพื่อเปิดรับพนักงานกลุ่มถัดไปทันที
+                        * ระบบเคลียร์ผู้เล่นรอบนี้อัตโนมัติแล้ว • สลับกลับหน้า QR Code ใน 8 วินาที (หรือกดปุ่มนี้เพื่อเริ่มทันที)
                     </p>
                 </div>
             </div>
@@ -555,7 +555,7 @@
                     <!-- Search Pill Bar (Exact style from user reference image!) -->
                     <div class="clay-pill-bar flex items-center bg-white rounded-full p-1.5 pl-4 shadow-lg border-2 border-amber-100">
                         <span class="text-xl mr-2 animate-bounce">✨</span>
-                        <input type="tel" id="emp-id-input" placeholder="กรอกรหัสพนักงาน" 
+                        <input type="tel" id="emp-id-input" placeholder="กรอกรหัสพนักงานเฉพาะตัวเลข เช่น 012345..." 
                             oninput="this.value = this.value.replace(/\D/g, ''); lookupEmployee(this.value);"
                             onkeypress="return (event.charCode >= 48 && event.charCode <= 57) || event.charCode === 13;"
                             onpaste="setTimeout(() => { this.value = this.value.replace(/\D/g, ''); lookupEmployee(this.value); }, 0)"
@@ -3977,6 +3977,15 @@ function doPost(e) {<br>
 
             initAudio();
 
+            if (window.nextHeatCountdownTimer) clearTimeout(window.nextHeatCountdownTimer);
+            const stageOverlay = document.getElementById('stage-winner-overlay');
+            if (stageOverlay && !stageOverlay.classList.contains('hidden')) {
+                stageOverlay.classList.add('hidden');
+                const lobbyView = document.getElementById('stage-lobby-view');
+                if (lobbyView) lobbyView.classList.remove('hidden');
+                if (window.generateStageQRCode) window.generateStageQRCode();
+            }
+
             // If previous race was finished, reset lobby cleanly before adding new player
             if (raceState.status === 'finished') {
                 activeRacers = {};
@@ -4072,6 +4081,12 @@ function doPost(e) {<br>
                 showToast("กำลังแข่งขันอยู่ กรุณารอให้จบรอบก่อนนะคะ", "warning");
                 return;
             }
+            if (window.nextHeatCountdownTimer) clearTimeout(window.nextHeatCountdownTimer);
+            const overlay = document.getElementById('stage-winner-overlay');
+            if (overlay) overlay.classList.add('hidden');
+            const lobbyView = document.getElementById('stage-lobby-view');
+            if (lobbyView) lobbyView.classList.remove('hidden');
+
             if (raceState.status === 'finished') {
                 activeRacers = {};
             }
@@ -4161,6 +4176,12 @@ function doPost(e) {<br>
 
         // Trigger simultaneous start for ALL racers in the lobby (ADMIN ONLY)
         window.triggerStartRace = async function() {
+            if (window.nextHeatCountdownTimer) clearTimeout(window.nextHeatCountdownTimer);
+            const stageOverlay = document.getElementById('stage-winner-overlay');
+            if (stageOverlay) stageOverlay.classList.add('hidden');
+            const lobbyView = document.getElementById('stage-lobby-view');
+            if (lobbyView) lobbyView.classList.add('hidden');
+
             const racerIds = Object.keys(activeRacers);
             if (racerIds.length === 0) {
                 showToast("ยังไม่มีผู้เล่นในสนาม กรุณาลงทะเบียนก่อนเริ่มแข่งค่ะ", "warning");
@@ -4785,6 +4806,39 @@ function doPost(e) {<br>
                 // If host screen also had a player active, show their result
                 if (currentPlayer && activeRacers[currentPlayer.id]) {
                     showMobileResultScreen();
+                }
+
+                // =========================================================================
+                // AUTOMATICALLY CLEAR RACERS FROM FINISHED HEAT (AUTO-RESET FOR NEXT ROUND):
+                // Clears activeRacers and resets lobby state so admin can immediately start the next round
+                // without having to manually click "ล้างรอบใหม่" / "ล้างสนาม" every round!
+                // =========================================================================
+                if (isHostLogger) {
+                    activeRacers = {};
+                    raceState.status = 'lobby';
+                    raceState.adminStarted = false;
+                    raceState.adminStartedAt = 0;
+                    raceState.heatId = null;
+
+                    // Reset timers on stage & admin
+                    document.getElementById('game-timer').textContent = GAME_DURATION.toFixed(1);
+                    document.getElementById('stage-timer').textContent = GAME_DURATION.toFixed(1);
+
+                    // Re-render Admin Dashboard so "จัดการผู้เล่นในห้องรอแข่ง" is immediately 0
+                    renderAdminDashboard();
+                    await pushLiveRaceState();
+
+                    // Auto-hide the winner overlay on Stage after 8 seconds and return to QR lobby
+                    const overlay = document.getElementById('stage-winner-overlay');
+                    const lobbyView = document.getElementById('stage-lobby-view');
+                    if (window.nextHeatCountdownTimer) clearTimeout(window.nextHeatCountdownTimer);
+                    window.nextHeatCountdownTimer = setTimeout(() => {
+                        if (overlay && !overlay.classList.contains('hidden') && raceState.status === 'lobby') {
+                            overlay.classList.add('hidden');
+                            if (lobbyView) lobbyView.classList.remove('hidden');
+                            if (window.generateStageQRCode) window.generateStageQRCode();
+                        }
+                    }, 8000);
                 }
             } finally {
                 isFinishingRace = false;
